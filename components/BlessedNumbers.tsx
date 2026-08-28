@@ -15,6 +15,9 @@ export default function BlessedNumbers() {
             key={numero}
             className="animate-shine font-display text-2xl tracking-[2px] text-charcoal px-5 py-3.5 rounded shadow-[0_4px_14px_oklch(0.80_0.14_85_/_0.25)]"
             style={{
+              // solid base color so the pill never shows the dark page background
+              // through the gaps left by the oversized, animated shine gradient
+              backgroundColor: "oklch(0.85 0.13 85)",
               backgroundImage:
                 "linear-gradient(135deg, oklch(0.85 0.13 85) 0%, oklch(0.85 0.13 85) 45%, oklch(0.98 0.06 95) 50%, oklch(0.85 0.13 85) 55%, oklch(0.85 0.13 85) 100%)",
             }}
