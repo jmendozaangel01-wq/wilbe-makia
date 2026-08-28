@@ -11,7 +11,8 @@ export default function Hero() {
         </div>
 
         <h1 className="font-display text-[42px] sm:text-[64px] leading-[0.95] tracking-[0.5px]">
-          GÁNATE UNA <span className="text-red">XTZ 660</span> 0-KM
+          GÁNATE UNA <span className="text-red">XTZ 660</span>{" "}
+          <span className="whitespace-nowrap">0-KM</span>
         </h1>
 
         <div className="flex items-center gap-7 flex-wrap justify-center mt-1.5">
