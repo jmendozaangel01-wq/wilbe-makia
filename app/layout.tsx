@@ -23,7 +23,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="es" className={`${anton.variable} ${inter.variable} h-full antialiased scroll-smooth`}>
-      <body className="min-h-full flex flex-col bg-charcoal text-cream">{children}</body>
+      {/* suppressHydrationWarning: browser extensions (e.g. ColorZilla) inject attributes like
+          cz-shortcut-listen onto <body> before hydration, which is a false-positive mismatch */}
+      <body className="min-h-full flex flex-col bg-charcoal text-cream" suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   );
 }
