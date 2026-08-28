@@ -268,6 +268,56 @@ describe("anon access control", () => {
   });
 });
 
+describe("random number assignment", () => {
+  it("does not always assign the lowest contiguous block of available numbers", async () => {
+    const contact = dummyContact("random-assignment");
+    const { data, error } = await admin.rpc("reservar_numeros", {
+      p_cantidad: 5,
+      ...contact,
+    });
+
+    expect(error).toBeNull();
+    expect(data).not.toBeNull();
+    const row = (data as ReservarNumerosRow[])[0];
+
+    // Sequential/lowest-first assignment would always produce [0, 1, 2, 3, 4]
+    // on a fresh DB. `order by random()` should not do that.
+    expect(row.numeros_asignados).not.toEqual([0, 1, 2, 3, 4]);
+
+    // Cleanup: release the numbers this test reserved so the suite stays
+    // rerunnable without requiring `supabase db reset` between invocations.
+    const { error: cleanupError } = await admin
+      .from("numeros")
+      .update({ estado: "disponible", reserva_id: null })
+      .in("numero", row.numeros_asignados);
+
+    expect(cleanupError).toBeNull();
+
+    const { error: reservaCleanupError } = await admin
+      .from("reservas")
+      .delete()
+      .eq("id", row.reserva_id);
+
+    expect(reservaCleanupError).toBeNull();
+  });
+});
+
+describe("numero_display generated column", () => {
+  it("zero-pads numero to 5 digits", async () => {
+    const { data, error } = await admin
+      .from("numeros")
+      .select("numero, numero_display")
+      .eq("numero", 52)
+      .single();
+
+    expect(error).toBeNull();
+    const row = data as { numero: number; numero_display: string };
+    expect(row.numero).toBe(52);
+    expect(row.numero_display).toBe("00052");
+    expect(row.numero_display).toHaveLength(5);
+  });
+});
+
 afterAll(async () => {
   // No teardown of the local DB itself — `npx supabase stop` (run by the
   // developer / CI step after `npm test`) tears down the whole stack.
