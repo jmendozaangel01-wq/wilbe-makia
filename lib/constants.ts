@@ -49,3 +49,10 @@ export function formatCOP(amount: number): string {
 export function clampCustomQty(value: number, fallback: number = MIN_CUSTOM_QTY): number {
   return Number.isNaN(value) ? fallback : Math.min(MAX_CUSTOM_QTY, Math.max(MIN_CUSTOM_QTY, value));
 }
+
+// Raffle numbers are stored as plain integers (0-99999) — padding is a display-only
+// concern. Use this whenever a raffle number is shown to a person (e.g. the
+// payment-confirmed email, an admin view), matching the BLESSED_NUMBERS format above.
+export function formatNumero(numero: number): string {
+  return numero.toString().padStart(5, "0");
+}
