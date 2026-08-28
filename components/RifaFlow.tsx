@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { submitReservation, type ReservationState } from "@/app/actions";
-import { MAX_CUSTOM_QTY, MIN_CUSTOM_QTY, PAQUETES, PRICE_PER_NUMBER, type Paquete, type PaqueteTipo } from "@/lib/constants";
+import { MIN_CUSTOM_QTY, PAQUETES, PRICE_PER_NUMBER, clampCustomQty, type Paquete, type PaqueteTipo } from "@/lib/constants";
 import PackageCard from "@/components/rifa/PackageCard";
 import CustomQtyPicker from "@/components/rifa/CustomQtyPicker";
 import ReservationForm from "@/components/rifa/ReservationForm";
@@ -35,8 +35,9 @@ export default function RifaFlow() {
   }
 
   function handleCustomQtyChange(value: number) {
+    // preserve existing bail-out-on-NaN behavior: don't touch state on invalid input
     if (Number.isNaN(value)) return;
-    setCustomQty(Math.min(MAX_CUSTOM_QTY, Math.max(MIN_CUSTOM_QTY, value)));
+    setCustomQty(clampCustomQty(value));
   }
 
   return (

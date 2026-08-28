@@ -1,5 +1,6 @@
 export const PRICE_PER_NUMBER = 200;
 export const MIN_CUSTOM_QTY = 65;
+// keep in sync with the p_cantidad > 200 check in supabase/migrations/0001_init.sql
 export const MAX_CUSTOM_QTY = 200;
 
 export const SORTEO_FECHA = "15 OCT 2026";
@@ -43,4 +44,8 @@ export const BLESSED_NUMBERS = [
 
 export function formatCOP(amount: number): string {
   return new Intl.NumberFormat("es-CO").format(amount);
+}
+
+export function clampCustomQty(value: number, fallback: number = MIN_CUSTOM_QTY): number {
+  return Number.isNaN(value) ? fallback : Math.min(MAX_CUSTOM_QTY, Math.max(MIN_CUSTOM_QTY, value));
 }

@@ -63,6 +63,7 @@ export default function ReservationForm({ selection, state, formAction, isPendin
       </div>
 
       <form
+        // remount to clear the file picker/dropzone state when the user switches packages
         key={`${selection.tipo}-${selection.qty}`}
         action={formAction}
         className="flex flex-col gap-4"

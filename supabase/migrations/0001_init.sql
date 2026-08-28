@@ -50,6 +50,7 @@ declare
   v_reserva_id uuid;
   v_numeros integer[];
 begin
+  -- keep in sync with MAX_CUSTOM_QTY in lib/constants.ts
   if p_cantidad < 1 or p_cantidad > 200 then
     raise exception 'Cantidad inválida';
   end if;
@@ -76,6 +77,11 @@ begin
 end;
 $$;
 
+-- security definer functions default to a PUBLIC execute grant; revoke it so
+-- only the service-role client (used server-side) can invoke these via
+-- PostgREST's RPC endpoint — anon/authenticated must never call them directly.
+revoke execute on function reservar_numeros(integer, text, text, text, text, text, text, text) from public, anon, authenticated;
+
 -- expire stale pending reservations, release their numbers
 create or replace function liberar_reservas_expiradas() returns void
 language plpgsql security definer as $$
@@ -88,6 +94,8 @@ begin
 end;
 $$;
 
+revoke execute on function liberar_reservas_expiradas() from public, anon, authenticated;
+
 -- mark a reservation as awaiting manual verification once a receipt is uploaded
 create or replace function marcar_en_verificacion(p_reserva_id uuid, p_comprobante_url text) returns void
 language plpgsql security definer as $$
@@ -96,6 +104,8 @@ begin
   where id = p_reserva_id and estado = 'pendiente_pago';
 end;
 $$;
+
+revoke execute on function marcar_en_verificacion(uuid, text) from public, anon, authenticated;
 
 -- run the expiration sweep every minute via pg_cron (Supabase supports this extension)
 create extension if not exists pg_cron;

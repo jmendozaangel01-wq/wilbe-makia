@@ -8,10 +8,9 @@ interface PackageCardProps {
 export default function PackageCard({ paquete, onSelect }: PackageCardProps) {
   return (
     <div
-      className="relative bg-charcoal-card-alt rounded-lg px-7 py-9 flex flex-col items-center gap-3.5 text-center"
-      style={{
-        border: `1.5px solid ${paquete.popular ? "oklch(0.80 0.14 85)" : "oklch(0.30 0.02 40)"}`,
-      }}
+      className={`relative bg-charcoal-card-alt rounded-lg px-7 py-9 flex flex-col items-center gap-3.5 text-center border-[1.5px] ${
+        paquete.popular ? "border-gold" : "border-border"
+      }`}
     >
       {paquete.popular && (
         <div className="absolute -top-[13px] bg-gold text-charcoal text-[11px] font-extrabold tracking-wide px-3.5 py-1.5 rounded-full uppercase">

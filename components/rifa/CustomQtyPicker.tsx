@@ -1,4 +1,4 @@
-import { MAX_CUSTOM_QTY, MIN_CUSTOM_QTY, PRICE_PER_NUMBER, formatCOP } from "@/lib/constants";
+import { MAX_CUSTOM_QTY, MIN_CUSTOM_QTY, PRICE_PER_NUMBER, clampCustomQty, formatCOP } from "@/lib/constants";
 
 interface CustomQtyPickerProps {
   qty: number;
@@ -25,8 +25,7 @@ export default function CustomQtyPicker({ qty, onQtyChange, onSelect }: CustomQt
         value={qty}
         onChange={(e) => onQtyChange(Number(e.target.value))}
         onBlur={(e) => {
-          const clamped = Math.min(MAX_CUSTOM_QTY, Math.max(MIN_CUSTOM_QTY, Number(e.target.value) || MIN_CUSTOM_QTY));
-          onQtyChange(clamped);
+          onQtyChange(clampCustomQty(Number(e.target.value), MIN_CUSTOM_QTY));
         }}
         className="w-[100px] bg-charcoal border border-border text-white text-base p-2.5 rounded text-center"
       />
