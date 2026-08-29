@@ -17,6 +17,7 @@ const inputClass =
 export default function ReservationForm({ selection, state, formAction, isPending }: ReservationFormProps) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [showComprobanteWarning, setShowComprobanteWarning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (state.status === "success") {
@@ -30,12 +31,23 @@ export default function ReservationForm({ selection, state, formAction, isPendin
           Tu comprobante fue recibido. Estamos verificando tu pago y te avisaremos por correo
           cuando tus {state.cantidad} números queden confirmados.
         </p>
+        <p className="text-gray/70 text-sm mt-4">
+          Si no ves el correo en un rato, revisa la carpeta de spam o promociones.
+        </p>
       </div>
     );
   }
 
   function pickFile(file: File | null) {
     setFileName(file ? file.name : null);
+    if (file) setShowComprobanteWarning(false);
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (!fileInputRef.current?.files?.length) {
+      e.preventDefault();
+      setShowComprobanteWarning(true);
+    }
   }
 
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
@@ -52,6 +64,22 @@ export default function ReservationForm({ selection, state, formAction, isPendin
 
   return (
     <div className="max-w-[640px] mx-auto">
+      {showComprobanteWarning && (
+        <div className="fixed top-5 right-5 z-50 max-w-[320px] bg-[oklch(0.85_0.14_85)] text-charcoal rounded-lg shadow-lg px-5 py-4 pr-9">
+          <button
+            type="button"
+            onClick={() => setShowComprobanteWarning(false)}
+            aria-label="Cerrar aviso"
+            className="absolute top-2 right-2.5 text-charcoal/70 hover:text-charcoal text-lg leading-none cursor-pointer"
+          >
+            ×
+          </button>
+          <div className="font-bold text-sm">Falta el comprobante</div>
+          <div className="text-sm mt-1">
+            Debes subir la imagen del pago antes de enviar el formulario.
+          </div>
+        </div>
+      )}
       <div className="bg-charcoal-card-alt border-[1.5px] border-gold rounded-lg px-7 py-[22px] text-center mb-9">
         <div className="text-[13px] tracking-[1.5px] text-gray uppercase">Reserva en curso</div>
         <div className="font-display text-[32px] text-gold mt-1.5">
@@ -66,6 +94,7 @@ export default function ReservationForm({ selection, state, formAction, isPendin
         // remount to clear the file picker/dropzone state when the user switches packages
         key={`${selection.tipo}-${selection.qty}`}
         action={formAction}
+        onSubmit={handleSubmit}
         className="flex flex-col gap-4"
       >
         <input type="hidden" name="paqueteTipo" defaultValue={selection.tipo} />
@@ -118,7 +147,6 @@ export default function ReservationForm({ selection, state, formAction, isPendin
         >
           <input
             ref={fileInputRef}
-            required
             type="file"
             name="comprobante"
             accept="image/*"
