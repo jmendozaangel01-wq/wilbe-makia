@@ -6,7 +6,7 @@ export const MAX_CUSTOM_QTY = 200;
 export const SORTEO_FECHA = "15 OCT 2026";
 
 export const NEQUI_NUMERO = "3015649719";
-export const NEQUI_NOMBRE = "Wilber Makia";
+export const NEQUI_NOMBRE = "Jairo Mendoza";
 
 export type PaqueteTipo = "paquete_65" | "paquete_100" | "paquete_120" | "custom";
 

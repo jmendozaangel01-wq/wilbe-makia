@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Image from "next/image";
 import { NEQUI_NOMBRE, NEQUI_NUMERO, formatCOP, type PaqueteTipo } from "@/lib/constants";
 import type { ReservationState } from "@/app/actions";
 
@@ -112,14 +113,8 @@ export default function ReservationForm({ selection, state, formAction, isPendin
         </div>
 
         <div className="mt-5 bg-charcoal-card-alt rounded-lg p-6 flex gap-6 items-center flex-wrap">
-          <div
-            className="w-[130px] h-[130px] flex-none border border-dashed border-gold/60 rounded flex items-center justify-center text-center font-mono text-[11px] text-gray"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(45deg, oklch(0.24 0.018 40) 0 8px, oklch(0.20 0.016 40) 8px 16px)",
-            }}
-          >
-            [ QR NEQUI ]
+          <div className="w-[130px] h-[130px] flex-none border border-gold/60 rounded overflow-hidden relative bg-white">
+            <Image src="/nequi-qr.jpeg" alt="Código QR para pagar por Nequi" fill className="object-contain" />
           </div>
           <div>
             <div className="font-extrabold text-[15px]">Paga por Nequi</div>
