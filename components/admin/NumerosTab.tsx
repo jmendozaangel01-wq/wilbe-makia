@@ -174,7 +174,7 @@ export default function NumerosTab({ initialCounts, changeTick, onViewReserva }:
   );
 
   return (
-    <div style={{ flex: 1, overflow: "auto", padding: "28px 32px 60px" }}>
+    <div className="px-4 sm:px-8" style={{ flex: 1, overflow: "auto", paddingTop: "28px", paddingBottom: "60px" }}>
       <div style={{ maxWidth: "640px", margin: "0 auto 28px" }}>
         <input
           value={searchQuery}
@@ -197,7 +197,7 @@ export default function NumerosTab({ initialCounts, changeTick, onViewReserva }:
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "16px", maxWidth: "820px", margin: "0 auto 32px" }}>
+      <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: "16px", maxWidth: "820px", margin: "0 auto 32px" }}>
         <Counter value={counts.disponibles} label="Disponibles" color="oklch(0.40 0.01 40)" />
         <Counter value={counts.reservados} label="Reservados" color="oklch(0.60 0.13 75)" />
         <Counter value={counts.vendidos} label="Vendidos" color="oklch(0.52 0.21 26)" />
@@ -255,7 +255,7 @@ export default function NumerosTab({ initialCounts, changeTick, onViewReserva }:
       </div>
 
       <div style={{ maxWidth: "820px", margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
           <div style={{ fontSize: "13px", fontWeight: 700, color: "oklch(0.40 0.01 40)" }}>Rango:</div>
           <select
             value={rangeIndex}
@@ -278,32 +278,45 @@ export default function NumerosTab({ initialCounts, changeTick, onViewReserva }:
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(40,1fr)", gap: "3px", background: "white", border: "1px solid oklch(0.90 0.005 40)", borderRadius: "8px", padding: "14px" }}>
-          {gridRows.map((cell) => (
-            <div
-              key={cell.numero}
-              onClick={() => openModal(cell.numero)}
-              title={formatNumero(cell.numero)}
-              style={{ position: "relative", aspectRatio: "1", background: STATE_STYLE[cell.estado].cellBg, borderRadius: "2px", cursor: "pointer" }}
-            >
-              {cell.es_bendecido && (
-                <span
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "8px",
-                    lineHeight: 1,
-                    color: "oklch(0.35 0.15 90)",
-                  }}
-                >
-                  ★
-                </span>
-              )}
-            </div>
-          ))}
+        <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(40,1fr)",
+              gap: "3px",
+              background: "white",
+              border: "1px solid oklch(0.90 0.005 40)",
+              borderRadius: "8px",
+              padding: "14px",
+              minWidth: "700px",
+            }}
+          >
+            {gridRows.map((cell) => (
+              <div
+                key={cell.numero}
+                onClick={() => openModal(cell.numero)}
+                title={formatNumero(cell.numero)}
+                style={{ position: "relative", aspectRatio: "1", background: STATE_STYLE[cell.estado].cellBg, borderRadius: "2px", cursor: "pointer" }}
+              >
+                {cell.es_bendecido && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "8px",
+                      lineHeight: 1,
+                      color: "oklch(0.35 0.15 90)",
+                    }}
+                  >
+                    ★
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -314,7 +327,7 @@ export default function NumerosTab({ initialCounts, changeTick, onViewReserva }:
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ background: "white", borderRadius: "10px", padding: "26px 30px", width: "340px", boxShadow: "0 20px 50px oklch(0 0 0 / 0.3)" }}
+            style={{ background: "white", borderRadius: "10px", padding: "26px 30px", width: "340px", maxWidth: "calc(100vw - 32px)", boxShadow: "0 20px 50px oklch(0 0 0 / 0.3)" }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "14px" }}>
               <div style={{ fontFamily: "monospace", fontSize: "22px", fontWeight: 800 }}>{formatNumero(modalInfo.numero)}</div>

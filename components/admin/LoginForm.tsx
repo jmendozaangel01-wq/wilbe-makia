@@ -36,7 +36,7 @@ export default function LoginForm() {
         background: "white",
         border: "1px solid oklch(0.90 0.005 40)",
         borderRadius: "10px",
-        padding: "32px",
+        padding: "clamp(20px, 6vw, 32px)",
         width: "100%",
         maxWidth: "360px",
         display: "flex",

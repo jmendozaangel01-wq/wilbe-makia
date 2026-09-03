@@ -9,7 +9,7 @@ export default function AdminLoginPage() {
         alignItems: "center",
         justifyContent: "center",
         background: "oklch(0.97 0.003 40)",
-        padding: "24px",
+        padding: "clamp(16px, 6vw, 24px)",
       }}
     >
       <LoginForm />

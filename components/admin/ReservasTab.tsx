@@ -32,7 +32,7 @@ export default function ReservasTab({
 
   if (!selected) {
     return (
-      <div style={{ flex: 1, overflow: "auto", padding: "24px 32px" }}>
+      <div className="px-4 sm:px-8" style={{ flex: 1, overflow: "auto", paddingTop: "24px", paddingBottom: "24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "16px" }}>
           <div style={{ fontSize: "20px", fontWeight: 800 }}>Reservas</div>
           <div style={{ fontSize: "13px", color: "oklch(0.50 0.01 40)" }}>{reservas.length} en total</div>
@@ -46,9 +46,8 @@ export default function ReservasTab({
           }}
         >
           <div
+            className="hidden sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr_1fr]"
             style={{
-              display: "grid",
-              gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
               padding: "12px 20px",
               background: "oklch(0.94 0.004 40)",
               fontSize: "12px",
@@ -72,34 +71,64 @@ export default function ReservasTab({
                 key={r.id}
                 onClick={() => onSelectReserva(r.id)}
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
-                  padding: "16px 20px",
                   borderTop: "1px solid oklch(0.92 0.005 40)",
                   cursor: "pointer",
-                  alignItems: "center",
                 }}
               >
-                <div style={{ fontWeight: 700 }}>
-                  {r.nombre} {r.apellido}
+                {/* Mobile: stacked card */}
+                <div className="flex sm:hidden items-center justify-between gap-3" style={{ padding: "14px 16px" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700 }}>
+                      {r.nombre} {r.apellido}
+                    </div>
+                    <div style={{ color: "oklch(0.45 0.01 40)", fontSize: "13px", marginTop: "2px" }}>
+                      {r.numeros_asignados.length} números · {hora}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2" style={{ flexShrink: 0 }}>
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        padding: "5px 12px",
+                        borderRadius: "20px",
+                        background: meta.bg,
+                        color: meta.color,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {meta.label}
+                    </span>
+                    <span style={{ color: "oklch(0.60 0.01 40)" }}>›</span>
+                  </div>
                 </div>
-                <div style={{ color: "oklch(0.40 0.01 40)" }}>{r.numeros_asignados.length} números</div>
-                <div style={{ color: "oklch(0.40 0.01 40)", fontSize: "13px" }}>{hora}</div>
-                <div>
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      fontWeight: 700,
-                      padding: "5px 12px",
-                      borderRadius: "20px",
-                      background: meta.bg,
-                      color: meta.color,
-                    }}
-                  >
-                    {meta.label}
-                  </span>
+
+                {/* Desktop/tablet: table row */}
+                <div
+                  className="hidden sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr_1fr]"
+                  style={{ padding: "16px 20px", alignItems: "center" }}
+                >
+                  <div style={{ fontWeight: 700 }}>
+                    {r.nombre} {r.apellido}
+                  </div>
+                  <div style={{ color: "oklch(0.40 0.01 40)" }}>{r.numeros_asignados.length} números</div>
+                  <div style={{ color: "oklch(0.40 0.01 40)", fontSize: "13px" }}>{hora}</div>
+                  <div>
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        padding: "5px 12px",
+                        borderRadius: "20px",
+                        background: meta.bg,
+                        color: meta.color,
+                      }}
+                    >
+                      {meta.label}
+                    </span>
+                  </div>
+                  <div style={{ textAlign: "right", color: "oklch(0.60 0.01 40)" }}>›</div>
                 </div>
-                <div style={{ textAlign: "right", color: "oklch(0.60 0.01 40)" }}>›</div>
               </div>
             );
           })}
@@ -220,7 +249,10 @@ function ReservaDetail({ reserva, onCloseDetail, onChanged }: ReservaDetailProps
 
   return (
     <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-      <div style={{ flex: 1, overflow: "auto", padding: "28px 40px 100px", maxWidth: "920px", margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+      <div
+        className="px-4 sm:px-10 pb-[190px] sm:pb-[110px]"
+        style={{ flex: 1, overflow: "auto", paddingTop: "28px", maxWidth: "920px", margin: "0 auto", width: "100%", boxSizing: "border-box" }}
+      >
         <button
           onClick={onCloseDetail}
           style={{
@@ -238,7 +270,7 @@ function ReservaDetail({ reserva, onCloseDetail, onChanged }: ReservaDetailProps
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "28px", flexWrap: "wrap" }}>
-          <div style={{ fontSize: "32px", fontWeight: 800 }}>
+          <div style={{ fontSize: "clamp(22px, 6vw, 32px)", fontWeight: 800 }}>
             {reserva.nombre} {reserva.apellido}
           </div>
           <span
@@ -259,7 +291,7 @@ function ReservaDetail({ reserva, onCloseDetail, onChanged }: ReservaDetailProps
           <div style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "oklch(0.50 0.01 40)", marginBottom: "16px" }}>
             Datos del cliente
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px" }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gap: "20px" }}>
             <Field label="Nombre completo" value={`${reserva.nombre} ${reserva.apellido}`} />
             <Field label="Correo" value={reserva.correo} />
             <Field label="WhatsApp" value={reserva.whatsapp} />
@@ -315,7 +347,7 @@ function ReservaDetail({ reserva, onCloseDetail, onChanged }: ReservaDetailProps
         </div>
 
         <div style={{ background: "white", border: "2px solid oklch(0.80 0.14 85)", borderRadius: "10px", padding: "24px 28px", marginBottom: "20px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
             <div style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "oklch(0.50 0.01 40)" }}>
               Números asignados
             </div>
@@ -408,6 +440,7 @@ function ReservaDetail({ reserva, onCloseDetail, onChanged }: ReservaDetailProps
 
       {canEdit && (
         <div
+          className="px-4 sm:px-10 flex-col sm:flex-row gap-3 sm:gap-4"
           style={{
             position: "fixed",
             bottom: 0,
@@ -415,16 +448,17 @@ function ReservaDetail({ reserva, onCloseDetail, onChanged }: ReservaDetailProps
             right: 0,
             background: "white",
             borderTop: "1px solid oklch(0.90 0.005 40)",
-            padding: "16px 40px",
+            paddingTop: "16px",
+            paddingBottom: "16px",
             display: "flex",
             justifyContent: "center",
-            gap: "16px",
             boxShadow: "0 -4px 16px oklch(0 0 0 / 0.06)",
           }}
         >
           <button
             onClick={reject}
             disabled={isPending}
+            className="w-full sm:w-auto"
             style={{
               background: "white",
               border: "1.5px solid oklch(0.60 0.01 40)",
@@ -442,6 +476,7 @@ function ReservaDetail({ reserva, onCloseDetail, onChanged }: ReservaDetailProps
             onClick={confirm}
             disabled={isPending || noComprobante}
             title={noComprobante ? "Falta el comprobante de pago" : ""}
+            className="w-full sm:w-auto sm:min-w-[280px]"
             style={{
               background: noComprobante ? "oklch(0.75 0.02 40)" : "oklch(0.52 0.21 26)",
               color: "white",
@@ -451,7 +486,6 @@ function ReservaDetail({ reserva, onCloseDetail, onChanged }: ReservaDetailProps
               padding: "14px 32px",
               borderRadius: "6px",
               cursor: isPending || noComprobante ? "not-allowed" : "pointer",
-              minWidth: "280px",
             }}
           >
             Confirmar pago y enviar números

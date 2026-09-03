@@ -91,11 +91,13 @@ export default function AdminDashboard({ initialReservas, initialCounts }: Admin
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <div
+        className="px-4 sm:px-8 flex-wrap gap-2"
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "18px 32px",
+          paddingTop: "18px",
+          paddingBottom: "18px",
           background: "oklch(0.15 0.014 40)",
           borderBottom: "3px solid oklch(0.80 0.14 85)",
         }}
@@ -118,10 +120,10 @@ export default function AdminDashboard({ initialReservas, initialCounts }: Admin
       </div>
 
       <div
+        className="px-4 sm:px-8 flex-wrap"
         style={{
           display: "flex",
           gap: "4px",
-          padding: "0 32px",
           background: "white",
           borderBottom: "1px solid oklch(0.90 0.005 40)",
         }}
