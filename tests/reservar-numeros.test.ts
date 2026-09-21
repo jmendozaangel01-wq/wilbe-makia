@@ -302,21 +302,14 @@ describe("random number assignment", () => {
   });
 });
 
-describe("numero_display generated column", () => {
-  it("zero-pads numero to 5 digits", async () => {
-    const { data, error } = await admin
-      .from("numeros")
-      .select("numero, numero_display")
-      .eq("numero", 52)
-      .single();
-
-    expect(error).toBeNull();
-    const row = data as { numero: number; numero_display: string };
-    expect(row.numero).toBe(52);
-    expect(row.numero_display).toBe("00052");
-    expect(row.numero_display).toHaveLength(5);
-  });
-});
+// The numero_display generated column (added in 0003_random_assignment_and_display.sql)
+// was dropped in 0009_tenant_constraints.sql as part of the multi-tenant
+// migration: per design decision D1, per-raffle zero-padding width can't be
+// computed by a single-table generated column once numero is no longer
+// globally unique, so padding moved to formatNumero() in lib/constants.ts.
+// The former "numero_display generated column" describe block asserting
+// that column's existence was removed here for that reason -- it's an
+// intentional schema change, not a regression.
 
 afterAll(async () => {
   // No teardown of the local DB itself — `npx supabase stop` (run by the
