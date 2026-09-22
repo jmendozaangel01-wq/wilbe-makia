@@ -1,4 +1,4 @@
-# Rifa Makia
+# Bendita Rifa
 
 Raffle-reservation site for Wilber Makia's raffle, built with Next.js 15 (App Router) and Supabase.
 
