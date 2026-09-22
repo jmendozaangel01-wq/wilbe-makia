@@ -36,9 +36,18 @@ interface AdminDashboardProps {
   initialCounts: NumeroCounts;
   /** Organization display name (design tenant-branding domain). */
   orgName: string;
+  /**
+   * Resolved tenant id from AdminContext (design D2/D8) -- used to scope the
+   * Realtime subscription below via a server-side `filter`. This is a
+   * bandwidth optimization only: RLS (0011_rls_rewrite.sql, membership-based)
+   * is already the real isolation boundary for this subscription, since
+   * Realtime evaluates the SELECT policy per subscriber once
+   * realtime.setAuth() is called below.
+   */
+  organizationId: string;
 }
 
-export default function AdminDashboard({ initialReservas, initialCounts, orgName }: AdminDashboardProps) {
+export default function AdminDashboard({ initialReservas, initialCounts, orgName, organizationId }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>("reservas");
   const [reservas, setReservas] = useState<Reserva[]>(initialReservas);
   const [selectedReservaId, setSelectedReservaId] = useState<string | null>(null);
@@ -72,10 +81,23 @@ export default function AdminDashboard({ initialReservas, initialCounts, orgName
 
       channel = supabase
         .channel("admin-reservas-changes")
-        .on("postgres_changes", { event: "*", schema: "public", table: "reservas" }, () => {
-          refetchReservas();
-          setChangeTick((t) => t + 1);
-        })
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "reservas",
+            // Bandwidth optimization only (task 4.7) -- RLS above (membership
+            // predicate on reservas, 0011_rls_rewrite.sql) is the actual
+            // tenant-isolation boundary for this subscription regardless of
+            // this filter.
+            filter: `organization_id=eq.${organizationId}`,
+          },
+          () => {
+            refetchReservas();
+            setChangeTick((t) => t + 1);
+          }
+        )
         .subscribe();
     });
 
@@ -83,7 +105,7 @@ export default function AdminDashboard({ initialReservas, initialCounts, orgName
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [refetchReservas]);
+  }, [refetchReservas, organizationId]);
 
   function goToReserva(id: string) {
     setSelectedReservaId(id);

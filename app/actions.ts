@@ -1,8 +1,10 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendComprobanteRecibidoEmail } from "@/lib/email";
+import { resolveOrganizationByHost } from "@/lib/tenant/resolve";
 import { MAX_CUSTOM_QTY, MIN_CUSTOM_QTY, PAQUETES, type PaqueteTipo } from "@/lib/constants";
 
 export type ReservationState =
@@ -88,6 +90,53 @@ export async function submitReservation(
     return { status: "error", error: "La cantidad seleccionada no es válida." };
   }
 
+  // Host-based tenant resolution (design D6, same pattern as app/page.tsx /
+  // app/layout.tsx). Required and load-bearing: submitReservation now calls
+  // the tenant-scoped reservar_numeros_rifa RPC, which needs a resolved
+  // raffle (and, transitively, its organization) to insert a reservas row
+  // with organization_id/raffle_id actually set. An unresolved Host used to
+  // fail-soft into the legacy flat storage path; it now fails the whole
+  // reservation up front, before any Storage upload happens, since there is
+  // no tenant to reserve numbers against.
+  const supabase = createAdminClient();
+
+  let organizationId: string;
+  try {
+    const headerList = await headers();
+    const host = headerList.get("host");
+    const org = host ? await resolveOrganizationByHost(host) : null;
+
+    if (!org) {
+      return { status: "error", error: "No pudimos identificar la rifa. Por favor intenta de nuevo." };
+    }
+
+    organizationId = org.id;
+  } catch (err) {
+    console.error("[reserva] tenant resolution failed", err);
+    return { status: "error", error: "No pudimos identificar la rifa. Por favor intenta de nuevo." };
+  }
+
+  let raffleId: string;
+  {
+    const { data: raffle, error: raffleError } = await supabase
+      .from("raffles")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("estado", "activa")
+      .maybeSingle();
+
+    if (raffleError) {
+      console.error("[reserva] active raffle lookup failed", { organizationId, error: raffleError.message });
+      return { status: "error", error: GENERIC_ERROR_MESSAGE };
+    }
+
+    if (!raffle) {
+      return { status: "error", error: "Esta rifa no está disponible en este momento." };
+    }
+
+    raffleId = (raffle as { id: string }).id;
+  }
+
   // Read the file bytes once and reuse them for both the signature check and
   // the upload, instead of letting the SDK read the File object twice.
   const comprobanteBuffer = await comprobante.arrayBuffer();
@@ -99,10 +148,8 @@ export async function submitReservation(
   let storagePath: string | undefined;
 
   try {
-    const supabase = createAdminClient();
-
     const extension = comprobante.name.split(".").pop() || "jpg";
-    storagePath = `${randomUUID()}.${extension}`;
+    storagePath = `${organizationId}/${randomUUID()}.${extension}`;
 
     const { error: uploadError } = await supabase.storage
       .from("comprobantes")
@@ -122,7 +169,8 @@ export async function submitReservation(
       return { status: "error", error: "No se pudo subir el comprobante. Intenta de nuevo." };
     }
 
-    const { data: reservaRows, error: reservaError } = await supabase.rpc("reservar_numeros", {
+    const { data: reservaRows, error: reservaError } = await supabase.rpc("reservar_numeros_rifa", {
+      p_raffle_id: raffleId,
       p_cantidad: cantidad,
       p_nombre: nombre,
       p_apellido: apellido,
@@ -140,7 +188,7 @@ export async function submitReservation(
       // reservation itself failed (most commonly: two buyers collided on the
       // last remaining numbers).
       const { error: removeError } = await supabase.storage.from("comprobantes").remove([storagePath]);
-      console.error("[reserva] reservar_numeros failed", {
+      console.error("[reserva] reservar_numeros_rifa failed", {
         correo,
         cantidad,
         paqueteTipo,
