@@ -13,6 +13,15 @@ import { parseSubdomain } from "./subdomain";
 // this project's existing convention of never importing lib/supabase/admin.ts
 // from a test file.
 
+/**
+ * Fallback display name for any UI that needs SOME organization name but
+ * Host resolution came back null (unresolvable subdomain, DB not yet
+ * migrated in a given environment, etc). Deliberately generic -- never a
+ * specific tenant's branding -- so it can never be mistaken for a real
+ * tenant's identity.
+ */
+export const DEFAULT_ORG_NAME = "Rifamakia";
+
 export interface ResolvedOrganization {
   id: string;
   subdomain: string;

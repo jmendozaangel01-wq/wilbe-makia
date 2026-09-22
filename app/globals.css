@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/*
+ * Fallback defaults only (design D7). These --color-* values render for any
+ * request whose tenant has no color_primario set (or an invalid one -- see
+ * lib/tenant/color.ts). A per-request <style> block emitted by
+ * app/layout.tsx overrides --color-gold here when a tenant DOES have a
+ * valid custom color, taking precedence via normal CSS cascade (it's
+ * injected into <head> after this stylesheet). @theme inline below stays
+ * build-time and untouched -- Tailwind's generated utility classes
+ * (`bg-gold`, `text-gold`, etc.) read var(--color-gold) at paint time
+ * either way, so no utility class needs to change for per-tenant overrides
+ * to take effect.
+ */
 :root {
   --color-charcoal: oklch(0.15 0.014 40);
   --color-charcoal-soft: oklch(0.13 0.012 40);
