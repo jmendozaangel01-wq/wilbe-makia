@@ -47,17 +47,31 @@ begin
     return new;
   end if;
 
-  perform realtime.send(
-    jsonb_build_object(
-      'numero', new.numero,
-      'estado', new.estado,
-      'raffle_id', new.raffle_id,
-      'organization_id', new.organization_id
-    ),
-    'blessed_number_changed',
-    'org:' || new.organization_id || ':blessed-numbers',
-    false
-  );
+  -- Broadcast failures must never roll back the caller's business
+  -- transaction (reservar_numeros_rifa, confirmar_pago_rifa,
+  -- rechazar_reserva_rifa, editar_numero_rifa, reasignar_numeros_rifa,
+  -- liberar_reservas_expiradas, and the legacy RPCs all run this trigger
+  -- inside their own transaction). realtime.send can fail transiently --
+  -- e.g. the Realtime container re-establishing its logical-replication
+  -- connection after a restart -- and an uncaught exception here would
+  -- otherwise abort the entire calling RPC, turning a live-UI nicety outage
+  -- into a failed payment confirmation or reservation. Caught and logged as
+  -- a warning instead so the row-level DB operation still commits.
+  begin
+    perform realtime.send(
+      jsonb_build_object(
+        'numero', new.numero,
+        'estado', new.estado,
+        'raffle_id', new.raffle_id,
+        'organization_id', new.organization_id
+      ),
+      'blessed_number_changed',
+      'org:' || new.organization_id || ':blessed-numbers',
+      false
+    );
+  exception when others then
+    raise warning 'blessed-numbers broadcast failed: %', sqlerrm;
+  end;
 
   return new;
 end;
