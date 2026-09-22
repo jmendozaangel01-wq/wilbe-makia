@@ -2,39 +2,69 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { BLESSED_NUMBERS } from "@/lib/constants";
+import { BLESSED_NUMBERS, formatNumero } from "@/lib/constants";
 
-export default function BlessedNumbers() {
-  const [taken, setTaken] = useState<Set<string>>(new Set());
+interface BlessedNumberBroadcastPayload {
+  numero: number;
+  estado: "disponible" | "reservado" | "vendido";
+  raffle_id: string | null;
+  organization_id: string;
+}
+
+interface BlessedNumbersProps {
+  /**
+   * Server-resolved initial snapshot (design D8) -- the padded numero_display
+   * strings that are already "vendido" at render time. Fetched by the parent
+   * Server Component (app/page.tsx), which already resolved the tenant from
+   * Host per D6. This component no longer makes its own client-side anon
+   * PostgREST read, so there's no client-controlled tenant filter to spoof.
+   */
+  initialTaken: string[];
+  /**
+   * Server-resolved tenant id (design D6), passed down as a prop -- never
+   * re-derived or accepted from a query string or client override. Null when
+   * upstream Host resolution failed; the component then renders the static
+   * initial snapshot with no live subscription rather than guessing a
+   * tenant's topic.
+   */
+  orgId: string | null;
+}
+
+export default function BlessedNumbers({ initialTaken, orgId }: BlessedNumbersProps) {
+  const [taken, setTaken] = useState<Set<string>>(() => new Set(initialTaken));
 
   useEffect(() => {
+    if (!orgId) return;
+
     const supabase = createClient();
-    let cancelled = false;
 
-    async function loadStatus() {
-      const { data, error } = await supabase.from("numeros").select("numero_display, estado").eq("es_bendecido", true);
-
-      if (cancelled) return;
-      if (error) {
-        console.error("[blessed-numbers] failed to load status", error.message);
-        return;
-      }
-
-      setTaken(new Set((data ?? []).filter((r) => r.estado === "vendido").map((r) => r.numero_display as string)));
-    }
-
-    loadStatus();
-
+    // Realtime Broadcast from Database (design D8, Round 2) -- replaces the
+    // rejected db-pre-request GUC mechanism. Topic is scoped by the
+    // server-resolved orgId prop above, never re-derived client-side.
+    // Deliberately `.on("broadcast", ...)`, NOT `.on("postgres_changes", ...)`
+    // -- see supabase/migrations/0013_blessed_numbers_broadcast.sql.
     const channel = supabase
-      .channel("blessed-numeros-changes")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "numeros", filter: "es_bendecido=eq.true" }, loadStatus)
+      .channel(`org:${orgId}:blessed-numbers`)
+      .on("broadcast", { event: "blessed_number_changed" }, ({ payload }) => {
+        const row = payload as BlessedNumberBroadcastPayload;
+        const numeroDisplay = formatNumero(row.numero);
+
+        setTaken((prev) => {
+          const next = new Set(prev);
+          if (row.estado === "vendido") {
+            next.add(numeroDisplay);
+          } else {
+            next.delete(numeroDisplay);
+          }
+          return next;
+        });
+      })
       .subscribe();
 
     return () => {
-      cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [orgId]);
 
   return (
     <div className="px-6 py-20 sm:px-10 text-center bg-charcoal-soft">
