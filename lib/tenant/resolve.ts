@@ -1,5 +1,6 @@
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { parseSubdomain } from "./subdomain";
 // NOT a static top-level import on purpose -- lib/supabase/admin.ts imports
 // the "server-only" marker package, which throws unconditionally as soon as
 // its module is evaluated outside a bundler that sets the "react-server"
@@ -88,3 +89,48 @@ export const resolveOrganizationBySubdomain = cache(
     return fetchOrganizationBySubdomain(createAdminClient(), subdomain);
   }
 );
+
+/**
+ * Resolves a raw `Host` header straight to an organization, handling the
+ * apex-domain case (design D6: "the bare apex domain and www.<apex> both
+ * resolve to the apex tenant") -- which has no literal subdomain string to
+ * look up by. The apex tenant is whichever organization has
+ * is_platform_owner = true (D4's unique partial index guarantees exactly
+ * one), not a hardcoded subdomain value.
+ *
+ * A "reserved" classification (parseSubdomain) never resolves to a tenant --
+ * matches the spec's tenant-resolution domain: reserved subdomains are
+ * blocked at organization-creation time, so no live org can ever occupy one.
+ */
+export async function fetchOrganizationByHost(
+  supabase: SupabaseClient,
+  hostHeader: string
+): Promise<ResolvedOrganization | null> {
+  const parsed = parseSubdomain(hostHeader);
+
+  if (parsed.kind === "reserved") {
+    return null;
+  }
+
+  if (parsed.kind === "apex") {
+    const { data, error } = await supabase
+      .from("organizations")
+      .select("id, subdomain, nombre, logo_url, color_primario, is_platform_owner, subscription_status, trial_ends_at")
+      .eq("is_platform_owner", true)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    return data ? toResolvedOrganization(data as OrganizationRow) : null;
+  }
+
+  return fetchOrganizationBySubdomain(supabase, parsed.subdomain);
+}
+
+/** Request-scoped, memoized version of fetchOrganizationByHost() -- see resolveOrganizationBySubdomain() above for why this is a dynamic import + cache(). */
+export const resolveOrganizationByHost = cache(async (hostHeader: string): Promise<ResolvedOrganization | null> => {
+  const { createAdminClient } = await import("../supabase/admin");
+  return fetchOrganizationByHost(createAdminClient(), hostHeader);
+});

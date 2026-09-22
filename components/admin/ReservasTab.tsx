@@ -174,7 +174,7 @@ function ReservaDetail({ reserva, onCloseDetail, onChanged }: ReservaDetailProps
     if (!reserva.comprobante_url) return;
 
     let cancelled = false;
-    getComprobanteUrl(reserva.comprobante_url).then((result) => {
+    getComprobanteUrl(reserva.id).then((result) => {
       if (cancelled) return;
       if (result.ok) {
         setComprobanteUrl(result.url);

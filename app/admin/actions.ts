@@ -1,44 +1,32 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { requireAdminContext, type AdminContext } from "@/lib/auth/admin-context";
 import { sendNumerosConfirmadosEmail, sendReservaRechazadaEmail } from "@/lib/email";
 
 export type AdminActionResult = { ok: true } | { ok: false; error: string };
 export type ComprobanteUrlResult = { ok: true; url: string } | { ok: false; error: string };
 
 const GENERIC_ERROR_MESSAGE = "Hubo un problema al procesar la acción. Intenta de nuevo.";
-
-/**
- * Every admin action re-checks the session server-side — middleware covers
- * page navigation, but Server Actions are their own POST endpoints and
- * shouldn't rely on that alone.
- */
-async function requireAdmin(): Promise<void> {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error("No autorizado");
-  }
-}
+const NO_RAFFLE_ERROR_MESSAGE = "Esta organización no tiene una rifa activa.";
 
 function rpcErrorMessage(fallback: string, err: { message?: string } | null): string {
   return err?.message || fallback;
 }
 
 export async function confirmarPago(reservaId: string): Promise<AdminActionResult> {
-  await requireAdmin();
+  const context: AdminContext = await requireAdminContext();
 
   try {
     const supabase = createAdminClient();
 
-    const { error } = await supabase.rpc("confirmar_pago_admin", { p_reserva_id: reservaId });
+    const { error } = await supabase.rpc("confirmar_pago_rifa", {
+      p_organization_id: context.organizationId,
+      p_reserva_id: reservaId,
+    });
 
     if (error) {
-      console.error("[admin] confirmar_pago_admin failed", { reservaId, error: error.message });
+      console.error("[admin] confirmar_pago_rifa failed", { reservaId, error: error.message });
       return { ok: false, error: rpcErrorMessage(GENERIC_ERROR_MESSAGE, error) };
     }
 
@@ -73,14 +61,17 @@ export async function confirmarPago(reservaId: string): Promise<AdminActionResul
 }
 
 export async function rechazarReserva(reservaId: string): Promise<AdminActionResult> {
-  await requireAdmin();
+  const context: AdminContext = await requireAdminContext();
 
   try {
     const supabase = createAdminClient();
-    const { error } = await supabase.rpc("rechazar_reserva_admin", { p_reserva_id: reservaId });
+    const { error } = await supabase.rpc("rechazar_reserva_rifa", {
+      p_organization_id: context.organizationId,
+      p_reserva_id: reservaId,
+    });
 
     if (error) {
-      console.error("[admin] rechazar_reserva_admin failed", { reservaId, error: error.message });
+      console.error("[admin] rechazar_reserva_rifa failed", { reservaId, error: error.message });
       return { ok: false, error: rpcErrorMessage(GENERIC_ERROR_MESSAGE, error) };
     }
 
@@ -115,18 +106,24 @@ export async function editarNumero(
   numeroAnterior: number,
   numeroNuevo: number
 ): Promise<AdminActionResult> {
-  await requireAdmin();
+  const context: AdminContext = await requireAdminContext();
+
+  if (!context.raffleId) {
+    return { ok: false, error: NO_RAFFLE_ERROR_MESSAGE };
+  }
 
   try {
     const supabase = createAdminClient();
-    const { error } = await supabase.rpc("editar_numero_admin", {
+    const { error } = await supabase.rpc("editar_numero_rifa", {
+      p_organization_id: context.organizationId,
+      p_raffle_id: context.raffleId,
       p_reserva_id: reservaId,
       p_numero_anterior: numeroAnterior,
       p_numero_nuevo: numeroNuevo,
     });
 
     if (error) {
-      console.error("[admin] editar_numero_admin failed", {
+      console.error("[admin] editar_numero_rifa failed", {
         reservaId,
         numeroAnterior,
         numeroNuevo,
@@ -148,14 +145,22 @@ export async function editarNumero(
 }
 
 export async function reasignarNumeros(reservaId: string): Promise<AdminActionResult> {
-  await requireAdmin();
+  const context: AdminContext = await requireAdminContext();
+
+  if (!context.raffleId) {
+    return { ok: false, error: NO_RAFFLE_ERROR_MESSAGE };
+  }
 
   try {
     const supabase = createAdminClient();
-    const { error } = await supabase.rpc("reasignar_numeros_admin", { p_reserva_id: reservaId });
+    const { error } = await supabase.rpc("reasignar_numeros_rifa", {
+      p_organization_id: context.organizationId,
+      p_raffle_id: context.raffleId,
+      p_reserva_id: reservaId,
+    });
 
     if (error) {
-      console.error("[admin] reasignar_numeros_admin failed", { reservaId, error: error.message });
+      console.error("[admin] reasignar_numeros_rifa failed", { reservaId, error: error.message });
       return { ok: false, error: rpcErrorMessage(GENERIC_ERROR_MESSAGE, error) };
     }
 
@@ -169,22 +174,47 @@ export async function reasignarNumeros(reservaId: string): Promise<AdminActionRe
   }
 }
 
-export async function getComprobanteUrl(path: string): Promise<ComprobanteUrlResult> {
-  await requireAdmin();
+export async function getComprobanteUrl(reservaId: string): Promise<ComprobanteUrlResult> {
+  const context: AdminContext = await requireAdminContext();
 
   try {
     const supabase = createAdminClient();
+
+    // Tenant scoping: resolve the storage path from the reserva row itself,
+    // scoped by the caller's organization_id, instead of trusting a raw
+    // client-supplied path -- otherwise any admin could sign a URL for
+    // another tenant's payment receipt by guessing/copying its path.
+    const { data: reserva, error: reservaError } = await supabase
+      .from("reservas")
+      .select("comprobante_url")
+      .eq("id", reservaId)
+      .eq("organization_id", context.organizationId)
+      .maybeSingle();
+
+    if (reservaError || !reserva) {
+      console.error("[admin] getComprobanteUrl reserva lookup failed", {
+        reservaId,
+        error: reservaError?.message,
+      });
+      return { ok: false, error: "No se pudo cargar el comprobante." };
+    }
+
+    const path = (reserva as { comprobante_url: string | null }).comprobante_url;
+    if (!path) {
+      return { ok: false, error: "No se pudo cargar el comprobante." };
+    }
+
     const { data, error } = await supabase.storage.from("comprobantes").createSignedUrl(path, 300);
 
     if (error || !data) {
-      console.error("[admin] createSignedUrl failed", { path, error: error?.message });
+      console.error("[admin] createSignedUrl failed", { reservaId, error: error?.message });
       return { ok: false, error: "No se pudo cargar el comprobante." };
     }
 
     return { ok: true, url: data.signedUrl };
   } catch (err) {
     console.error("[admin] getComprobanteUrl unexpected exception", {
-      path,
+      reservaId,
       error: err instanceof Error ? err.message : String(err),
     });
     return { ok: false, error: GENERIC_ERROR_MESSAGE };

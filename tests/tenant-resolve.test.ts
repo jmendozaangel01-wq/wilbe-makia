@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { fetchOrganizationBySubdomain } from "../lib/tenant/resolve";
+import { fetchOrganizationByHost, fetchOrganizationBySubdomain } from "../lib/tenant/resolve";
 
 // Integration test against the REAL local Postgres stack (see
 // tests/reservar-numeros.test.ts for why) -- confirms the 0006-0009
@@ -56,6 +56,47 @@ describe("fetchOrganizationBySubdomain", () => {
 
     // Cleanup: keep this suite re-runnable without `supabase db reset`.
     await admin.from("organizations").delete().eq("id", insertedId);
+  });
+});
+
+describe("fetchOrganizationByHost", () => {
+  it("resolves the apex host to the platform-owner organization, not by subdomain string", async () => {
+    const org = await fetchOrganizationByHost(admin, "rifamakia.com");
+    expect(org).not.toBeNull();
+    expect(org?.isPlatformOwner).toBe(true);
+  });
+
+  it("resolves www.<apex> the same way as the bare apex", async () => {
+    const org = await fetchOrganizationByHost(admin, "www.rifamakia.com");
+    expect(org).not.toBeNull();
+    expect(org?.isPlatformOwner).toBe(true);
+  });
+
+  it("resolves a tenant subdomain host to that specific organization", async () => {
+    const { data: inserted, error } = await admin
+      .from("organizations")
+      .insert({ subdomain: "host-resolve-test-acme", nombre: "Acme Host Test", subscription_status: "active" })
+      .select("id")
+      .single();
+    expect(error).toBeNull();
+    const insertedId = (inserted as { id: string }).id;
+
+    const org = await fetchOrganizationByHost(admin, "host-resolve-test-acme.rifamakia.com");
+    expect(org).not.toBeNull();
+    expect(org?.id).toBe(insertedId);
+    expect(org?.isPlatformOwner).toBe(false);
+
+    await admin.from("organizations").delete().eq("id", insertedId);
+  });
+
+  it("never resolves a reserved-word host to any organization", async () => {
+    const org = await fetchOrganizationByHost(admin, "admin.rifamakia.com");
+    expect(org).toBeNull();
+  });
+
+  it("returns null for an unknown tenant subdomain host", async () => {
+    const org = await fetchOrganizationByHost(admin, "does-not-exist-anywhere.rifamakia.com");
+    expect(org).toBeNull();
   });
 });
 
