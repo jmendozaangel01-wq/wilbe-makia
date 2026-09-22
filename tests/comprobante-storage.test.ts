@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createAuthedUser, deleteTestUser, type AuthedTestUser } from "./helpers/auth";
-import { cleanupOrg, createTestOrg, type TestOrg } from "./helpers/fixtures";
+import { cleanupOrg, createTestOrg, createTestRaffle, seedNumeros, type TestOrg } from "./helpers/fixtures";
 
 // getComprobanteUrl (app/admin/actions.ts) has hard dependencies on
 // "server-only", next/headers, the request-bound lib/supabase/server client,
@@ -17,6 +17,15 @@ import { cleanupOrg, createTestOrg, type TestOrg } from "./helpers/fixtures";
 // filename. This is what makes a pre-migration (unprefixed) receipt keep
 // resolving with zero backfill, and what makes a foreign-org reservaId
 // resolve to zero rows instead of leaking another tenant's receipt.
+//
+// Post-review fix (Judge B, false-confidence gap): fixture reservas rows are
+// now created via the real reservar_numeros_rifa RPC + marcar_en_verificacion
+// (same path submitReservation/app/actions.ts uses), instead of a raw insert
+// with organization_id pre-set directly via the admin client. That raw
+// insert bypassed the exact bug the other reviewers found (organization_id
+// never getting set through the real insert path) -- these fixtures now
+// exercise the real RPC so this test suite would actually catch a
+// regression there, not just assert against data it fabricated by hand.
 
 const mockState = vi.hoisted(() => ({
   host: "" as string,
@@ -116,27 +125,40 @@ describe("getComprobanteUrl", () => {
     uploadedPaths.push(path);
   }
 
+  /**
+   * Creates a reserva through the real tenant-scoped insert path --
+   * reservar_numeros_rifa (same RPC submitReservation/app/actions.ts calls)
+   * followed by marcar_en_verificacion to attach the given comprobante_url
+   * and move it to en_verificacion -- instead of a raw admin-client insert
+   * with organization_id pre-set by hand. Each call gets its own
+   * single-number raffle; cleanupOrg() (afterAll) removes it along with the
+   * rest of the org's rows.
+   */
   async function createReserva(organizationId: string, comprobanteUrl: string): Promise<string> {
-    const { data, error } = await admin
-      .from("reservas")
-      .insert({
-        organization_id: organizationId,
-        nombre: "Test",
-        apellido: "Buyer",
-        correo: `buyer-${Date.now()}-${Math.random()}@example.com`,
-        whatsapp: "3000000000",
-        direccion: "Calle Falsa 123",
-        ciudad: "Cartagena",
-        paquete_tipo: "custom",
-        numeros_asignados: [0],
-        comprobante_url: comprobanteUrl,
-        estado: "en_verificacion",
-        expira_en: new Date(Date.now() + 10 * 60_000).toISOString(),
-      })
-      .select("id")
-      .single();
-    if (error) throw error;
-    return (data as { id: string }).id;
+    const raffle = await createTestRaffle(admin, organizationId, "comprobante", { maxNumero: 0, estado: "activa" });
+    await seedNumeros(admin, raffle);
+
+    const { data: reservaRows, error: reservaError } = await admin.rpc("reservar_numeros_rifa", {
+      p_raffle_id: raffle.id,
+      p_cantidad: 1,
+      p_nombre: "Test",
+      p_apellido: "Buyer",
+      p_correo: `buyer-${Date.now()}-${Math.random()}@example.com`,
+      p_whatsapp: "3000000000",
+      p_direccion: "Calle Falsa 123",
+      p_ciudad: "Cartagena",
+      p_paquete_tipo: "custom",
+    });
+    if (reservaError) throw reservaError;
+    const reservaId = (reservaRows as { reserva_id: string }[])[0].reserva_id;
+
+    const { error: verificacionError } = await admin.rpc("marcar_en_verificacion", {
+      p_reserva_id: reservaId,
+      p_comprobante_url: comprobanteUrl,
+    });
+    if (verificacionError) throw verificacionError;
+
+    return reservaId;
   }
 
   it("rejects a reservaId belonging to a foreign organization instead of signing its receipt", async () => {
