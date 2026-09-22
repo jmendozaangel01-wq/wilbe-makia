@@ -2,7 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { resolveOrganizationByHost } from "@/lib/tenant/resolve";
-import { hasActiveAccess } from "./access-check";
+import { hasActiveAccess } from "@/lib/billing/access";
 
 /**
  * Replaces requireAdmin() (app/admin/actions.ts), which only checked that a
@@ -14,6 +14,12 @@ import { hasActiveAccess } from "./access-check";
  * branded AdminContext. Every admin RPC call takes p_organization_id from
  * this context, so an unscoped call is awkward to write by accident (design
  * D2).
+ *
+ * The subscription-access decision itself (hasActiveAccess()) lives in
+ * lib/billing/access.ts -- design's canonical location for it (File Changes:
+ * "Provider-agnostic gate helper mirroring org_access_active"). This is the
+ * REAL security boundary for the gate (middleware.ts's redirect is UX-only,
+ * see design D3), since Server Actions are directly invocable POST endpoints.
  *
  * Reads organization_members/organizations/raffles through the
  * request-bound, RLS-respecting client (lib/supabase/server.ts) rather than
