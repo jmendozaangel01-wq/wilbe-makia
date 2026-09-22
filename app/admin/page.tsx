@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminContext, AdminContextError } from "@/lib/auth/admin-context";
+import { resolveOrganizationByHost, DEFAULT_ORG_NAME } from "@/lib/tenant/resolve";
 import AdminDashboard, { type Reserva, type NumeroCounts } from "@/components/admin/AdminDashboard";
 
 export default async function AdminPage() {
@@ -13,6 +15,14 @@ export default async function AdminPage() {
     }
     throw err;
   }
+
+  // React cache()-deduped (design D6) -- app/layout.tsx already resolves
+  // the same tenant by Host within this same request, so this is a
+  // memoized read, not a second round trip to the DB.
+  const headerList = await headers();
+  const host = headerList.get("host");
+  const org = host ? await resolveOrganizationByHost(host) : null;
+  const orgName = org?.nombre ?? DEFAULT_ORG_NAME;
 
   const admin = createAdminClient();
 
@@ -49,5 +59,5 @@ export default async function AdminPage() {
     vendidos: vendidos.count ?? 0,
   };
 
-  return <AdminDashboard initialReservas={(reservas as Reserva[]) ?? []} initialCounts={counts} />;
+  return <AdminDashboard initialReservas={(reservas as Reserva[]) ?? []} initialCounts={counts} orgName={orgName} />;
 }

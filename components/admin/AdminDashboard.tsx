@@ -34,9 +34,11 @@ type Tab = "reservas" | "numeros";
 interface AdminDashboardProps {
   initialReservas: Reserva[];
   initialCounts: NumeroCounts;
+  /** Organization display name (design tenant-branding domain). */
+  orgName: string;
 }
 
-export default function AdminDashboard({ initialReservas, initialCounts }: AdminDashboardProps) {
+export default function AdminDashboard({ initialReservas, initialCounts, orgName }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>("reservas");
   const [reservas, setReservas] = useState<Reserva[]>(initialReservas);
   const [selectedReservaId, setSelectedReservaId] = useState<string | null>(null);
@@ -103,7 +105,7 @@ export default function AdminDashboard({ initialReservas, initialCounts }: Admin
         }}
       >
         <div className="font-display" style={{ fontSize: "20px", color: "white", letterSpacing: "1px" }}>
-          WILBER <span style={{ color: "oklch(0.80 0.14 85)" }}>MAKIA</span>{" "}
+          <span style={{ color: "oklch(0.80 0.14 85)" }}>{orgName}</span>{" "}
           <span
             className="font-body"
             style={{

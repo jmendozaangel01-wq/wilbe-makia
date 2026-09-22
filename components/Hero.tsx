@@ -1,10 +1,30 @@
 import Image from "next/image";
 import { PRICE_PER_NUMBER, SORTEO_FECHA } from "@/lib/constants";
 
-export default function Hero() {
+interface HeroProps {
+  /** Organization display name (design tenant-branding domain). Used as the
+   * logo's alt text and shown as a small kicker when no logo is set. */
+  orgName: string;
+  /** Organization logo (organizations.logo_url), null when unset. */
+  logoUrl: string | null;
+}
+
+export default function Hero({ orgName, logoUrl }: HeroProps) {
   return (
     <div className="relative bg-charcoal px-6 py-16 sm:px-10 flex flex-col items-center gap-9">
       <div className="max-w-[640px] flex flex-col items-center gap-[18px] text-center">
+        {logoUrl ? (
+          // Plain <img>, not next/image: logoUrl comes from a Supabase
+          // Storage public bucket (design D7) whose host isn't in
+          // next.config.ts's images.remotePatterns -- matching the existing
+          // convention for storage-hosted images elsewhere in this codebase
+          // (components/admin/ReservasTab.tsx's comprobante preview).
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl} alt={orgName} className="h-10 w-auto object-contain" />
+        ) : (
+          <div className="text-xs tracking-[2px] text-gray uppercase font-bold">{orgName}</div>
+        )}
+
         <div className="inline-flex items-center gap-2 text-gold font-bold text-[13px] tracking-[2px] uppercase">
           <span className="w-2 h-2 rounded-full bg-red inline-block animate-pulse-dot" />
           Rifa en vivo
