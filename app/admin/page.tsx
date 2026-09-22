@@ -72,5 +72,12 @@ export default async function AdminPage() {
     vendidos: vendidos.count ?? 0,
   };
 
-  return <AdminDashboard initialReservas={(reservas as Reserva[]) ?? []} initialCounts={counts} orgName={orgName} />;
+  return (
+    <AdminDashboard
+      initialReservas={(reservas as Reserva[]) ?? []}
+      initialCounts={counts}
+      orgName={orgName}
+      organizationId={context.organizationId}
+    />
+  );
 }
