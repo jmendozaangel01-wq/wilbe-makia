@@ -1,6 +1,19 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
+const dirname = path.dirname(fileURLToPath(import.meta.url));
+
 export default defineConfig({
+  resolve: {
+    // Mirrors tsconfig.json's "@/*" -> "./*" path mapping (Next.js resolves
+    // it via its own bundler; Vitest needs it spelled out here) -- needed so
+    // tests/admin-context.test.ts can import lib/auth/admin-context.ts,
+    // which itself imports "@/lib/tenant/resolve" and "@/lib/supabase/server".
+    alias: {
+      "@": dirname,
+    },
+  },
   test: {
     environment: "node",
     setupFiles: ["./tests/setup.ts"],

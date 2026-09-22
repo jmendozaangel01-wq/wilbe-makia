@@ -27,7 +27,7 @@
 -- ---------------------------------------------------------------------------
 create or replace function crear_organizacion(p_nombre text, p_subdomain text)
 returns table(organization_id uuid)
-language plpgsql security definer as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_org_id uuid;
   v_subdomain text;
@@ -40,6 +40,16 @@ begin
 
   if v_subdomain is null or length(v_subdomain) = 0 then
     raise exception 'Subdomain requerido';
+  end if;
+
+  -- DNS-label charset/length allowlist: lowercase letters, digits, and
+  -- internal hyphens only, no leading/trailing hyphen, 1-63 chars -- matches
+  -- the label shape lib/tenant/subdomain.ts's parseSubdomain()/classifyLabel()
+  -- assumes when it splits a Host header on ".". Rejects dots, unicode
+  -- homoglyphs, whitespace, etc. that isReservedSubdomain()'s blocklist alone
+  -- would let through.
+  if v_subdomain !~ '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$' then
+    raise exception 'Subdomain inválido';
   end if;
 
   -- keep in sync with isReservedSubdomain() in lib/tenant/subdomain.ts
@@ -67,6 +77,21 @@ grant execute on function crear_organizacion(text, text) to authenticated;
 -- open raffle for the same org by constraint, not by an app-level check.
 -- Admin-only (called via the service-role client with organization_id from
 -- AdminContext), like every RPC below except crear_organizacion.
+--
+-- Perf note: the bulk seed insert below already writes p_organization_id
+-- directly into every row's organization_id (not derived from raffle_id),
+-- so it does no per-row lookup of its own. The
+-- numeros_organization_id_consistency BEFORE INSERT ROW trigger still runs
+-- its own `select organization_id from raffles where id = new.raffle_id`
+-- once per inserted row regardless (up to 100,001 rows here) -- that's a
+-- known, deliberate N+1 on a primary-key lookup (cheap per-row, not free at
+-- this volume) kept as defense-in-depth so the consistency check can't be
+-- bypassed by a future INSERT path that doesn't derive organization_id
+-- correctly. Turning it into a single set-based check would require
+-- rewriting it as a statement-level trigger (not supported for BEFORE ROW
+-- semantics that need to reject individual rows) or caching the lookup
+-- across rows in the same statement -- deferred as out of scope for this
+-- batch; revisit if raffle seeding volume or latency becomes a real problem.
 -- ---------------------------------------------------------------------------
 create or replace function crear_rifa(
   p_organization_id uuid,
@@ -79,7 +104,7 @@ create or replace function crear_rifa(
   p_nequi_numero text,
   p_nequi_nombre text
 ) returns uuid
-language plpgsql security definer as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_raffle_id uuid;
 begin
@@ -119,7 +144,7 @@ create or replace function reservar_numeros_rifa(
   p_nombre text, p_apellido text, p_correo text, p_whatsapp text,
   p_direccion text, p_ciudad text, p_paquete_tipo text
 ) returns table(reserva_id uuid, numeros_asignados integer[])
-language plpgsql security definer as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_organization_id uuid;
   v_reserva_id uuid;
@@ -130,9 +155,10 @@ begin
     raise exception 'Cantidad inválida';
   end if;
 
-  select organization_id into v_organization_id from raffles where id = p_raffle_id;
+  select organization_id into v_organization_id from raffles
+  where id = p_raffle_id and estado = 'activa';
   if v_organization_id is null then
-    raise exception 'Rifa no encontrada';
+    raise exception 'Rifa no encontrada o no está activa';
   end if;
 
   select array_agg(numero) into v_numeros from (
@@ -173,7 +199,7 @@ revoke execute on function reservar_numeros_rifa(uuid, integer, text, text, text
 -- ---------------------------------------------------------------------------
 create or replace function confirmar_pago_rifa(p_organization_id uuid, p_reserva_id uuid)
 returns void
-language plpgsql security definer as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_estado text;
   v_comprobante text;
@@ -207,7 +233,7 @@ revoke execute on function confirmar_pago_rifa(uuid, uuid) from public, anon, au
 -- ---------------------------------------------------------------------------
 create or replace function rechazar_reserva_rifa(p_organization_id uuid, p_reserva_id uuid)
 returns void
-language plpgsql security definer as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_estado text;
 begin
@@ -242,7 +268,7 @@ create or replace function editar_numero_rifa(
   p_organization_id uuid, p_raffle_id uuid, p_reserva_id uuid,
   p_numero_anterior integer, p_numero_nuevo integer
 ) returns void
-language plpgsql security definer as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_estado text;
   v_nuevo_estado text;
@@ -305,7 +331,7 @@ revoke execute on function editar_numero_rifa(uuid, uuid, uuid, integer, integer
 -- ---------------------------------------------------------------------------
 create or replace function reasignar_numeros_rifa(p_organization_id uuid, p_raffle_id uuid, p_reserva_id uuid)
 returns integer[]
-language plpgsql security definer as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_estado text;
   v_cantidad integer;

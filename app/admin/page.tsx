@@ -1,25 +1,42 @@
 import { redirect } from "next/navigation";
-import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAdminContext, AdminContextError } from "@/lib/auth/admin-context";
 import AdminDashboard, { type Reserva, type NumeroCounts } from "@/components/admin/AdminDashboard";
 
 export default async function AdminPage() {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/admin/login");
+  let context;
+  try {
+    context = await requireAdminContext();
+  } catch (err) {
+    if (err instanceof AdminContextError) {
+      redirect("/admin/login");
+    }
+    throw err;
   }
 
   const admin = createAdminClient();
 
   const [{ data: reservas, error: reservasError }, disponibles, reservados, vendidos] = await Promise.all([
-    admin.from("reservas").select("*").order("creado_en", { ascending: false }),
-    admin.from("numeros").select("*", { count: "exact", head: true }).eq("estado", "disponible"),
-    admin.from("numeros").select("*", { count: "exact", head: true }).eq("estado", "reservado"),
-    admin.from("numeros").select("*", { count: "exact", head: true }).eq("estado", "vendido"),
+    admin
+      .from("reservas")
+      .select("*")
+      .eq("organization_id", context.organizationId)
+      .order("creado_en", { ascending: false }),
+    admin
+      .from("numeros")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", context.organizationId)
+      .eq("estado", "disponible"),
+    admin
+      .from("numeros")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", context.organizationId)
+      .eq("estado", "reservado"),
+    admin
+      .from("numeros")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", context.organizationId)
+      .eq("estado", "vendido"),
   ]);
 
   if (reservasError) {

@@ -174,26 +174,47 @@ export async function reasignarNumeros(reservaId: string): Promise<AdminActionRe
   }
 }
 
-export async function getComprobanteUrl(path: string): Promise<ComprobanteUrlResult> {
-  // Storage-path tenant scoping (reservaId-based signing, verified against
-  // AdminContext.organizationId) is Phase 4 (task 4.10) -- this call site
-  // only swaps the auth guard for now; the `path` parameter and its
-  // service-role createSignedUrl call are unchanged from before this batch.
-  await requireAdminContext();
+export async function getComprobanteUrl(reservaId: string): Promise<ComprobanteUrlResult> {
+  const context: AdminContext = await requireAdminContext();
 
   try {
     const supabase = createAdminClient();
+
+    // Tenant scoping: resolve the storage path from the reserva row itself,
+    // scoped by the caller's organization_id, instead of trusting a raw
+    // client-supplied path -- otherwise any admin could sign a URL for
+    // another tenant's payment receipt by guessing/copying its path.
+    const { data: reserva, error: reservaError } = await supabase
+      .from("reservas")
+      .select("comprobante_url")
+      .eq("id", reservaId)
+      .eq("organization_id", context.organizationId)
+      .maybeSingle();
+
+    if (reservaError || !reserva) {
+      console.error("[admin] getComprobanteUrl reserva lookup failed", {
+        reservaId,
+        error: reservaError?.message,
+      });
+      return { ok: false, error: "No se pudo cargar el comprobante." };
+    }
+
+    const path = (reserva as { comprobante_url: string | null }).comprobante_url;
+    if (!path) {
+      return { ok: false, error: "No se pudo cargar el comprobante." };
+    }
+
     const { data, error } = await supabase.storage.from("comprobantes").createSignedUrl(path, 300);
 
     if (error || !data) {
-      console.error("[admin] createSignedUrl failed", { path, error: error?.message });
+      console.error("[admin] createSignedUrl failed", { reservaId, error: error?.message });
       return { ok: false, error: "No se pudo cargar el comprobante." };
     }
 
     return { ok: true, url: data.signedUrl };
   } catch (err) {
     console.error("[admin] getComprobanteUrl unexpected exception", {
-      path,
+      reservaId,
       error: err instanceof Error ? err.message : String(err),
     });
     return { ok: false, error: GENERIC_ERROR_MESSAGE };
