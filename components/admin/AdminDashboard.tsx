@@ -101,11 +101,11 @@ export default function AdminDashboard({ initialReservas, initialCounts, orgName
           paddingTop: "18px",
           paddingBottom: "18px",
           background: "oklch(0.15 0.014 40)",
-          borderBottom: "3px solid oklch(0.80 0.14 85)",
+          borderBottom: "3px solid var(--color-gold)",
         }}
       >
         <div className="font-display" style={{ fontSize: "20px", color: "white", letterSpacing: "1px" }}>
-          <span style={{ color: "oklch(0.80 0.14 85)" }}>{orgName}</span>{" "}
+          <span style={{ color: "var(--color-gold)" }}>{orgName}</span>{" "}
           <span
             className="font-body"
             style={{

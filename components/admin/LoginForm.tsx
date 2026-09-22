@@ -52,7 +52,7 @@ export default function LoginForm({ orgName }: LoginFormProps) {
       }}
     >
       <div className="font-display" style={{ fontSize: "18px", letterSpacing: "1px" }}>
-        {orgName} <span style={{ color: "oklch(0.70 0.14 80)" }}>ADMIN</span>
+        {orgName} <span style={{ color: "var(--color-gold)" }}>ADMIN</span>
       </div>
 
       <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "13px", fontWeight: 600 }}>

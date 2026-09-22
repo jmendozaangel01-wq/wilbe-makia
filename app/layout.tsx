@@ -52,7 +52,20 @@ export const metadata: Metadata = {
 async function BrandStyle() {
   const headerList = await headers();
   const host = headerList.get("host");
-  const org = host ? await resolveOrganizationByHost(host) : null;
+
+  let org = null;
+  if (host) {
+    try {
+      org = await resolveOrganizationByHost(host);
+    } catch (err) {
+      // Resolution failure here must not block the request -- this is the
+      // ROOT layout, and this codebase has no app/error.tsx/global-error.tsx
+      // to catch a throw here; it would take down every page. Fall back to
+      // "no override" (the :root default color), matching the same fail-soft
+      // pattern as middleware.ts's subscription-gate lookup.
+      console.error("[layout] tenant resolution failed", err);
+    }
+  }
 
   const color = org?.colorPrimario;
   if (!color || !isValidBrandColor(color)) {

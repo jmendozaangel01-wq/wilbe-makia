@@ -5,7 +5,18 @@ import { resolveOrganizationByHost, DEFAULT_ORG_NAME } from "@/lib/tenant/resolv
 export default async function AdminLoginPage() {
   const headerList = await headers();
   const host = headerList.get("host");
-  const org = host ? await resolveOrganizationByHost(host) : null;
+
+  let org = null;
+  if (host) {
+    try {
+      org = await resolveOrganizationByHost(host);
+    } catch (err) {
+      // Resolution failure here must not block the request -- fall back to
+      // the generic default name, matching middleware.ts's fail-soft pattern
+      // for this same lookup.
+      console.error("[admin/login] tenant resolution failed", err);
+    }
+  }
   const orgName = org?.nombre ?? DEFAULT_ORG_NAME;
 
   return (

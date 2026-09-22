@@ -21,7 +21,20 @@ export default async function AdminPage() {
   // memoized read, not a second round trip to the DB.
   const headerList = await headers();
   const host = headerList.get("host");
-  const org = host ? await resolveOrganizationByHost(host) : null;
+
+  let org = null;
+  if (host) {
+    try {
+      org = await resolveOrganizationByHost(host);
+    } catch (err) {
+      // Resolution failure here must not block the request -- fall back to
+      // the generic default name, matching middleware.ts's fail-soft pattern
+      // for this same lookup. requireAdminContext() above already re-resolved
+      // the tenant and is the real fail-closed boundary; this second lookup
+      // is only for display name, so a failure here is cosmetic.
+      console.error("[admin] tenant resolution failed", err);
+    }
+  }
   const orgName = org?.nombre ?? DEFAULT_ORG_NAME;
 
   const admin = createAdminClient();
