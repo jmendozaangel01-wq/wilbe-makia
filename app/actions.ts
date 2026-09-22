@@ -1,8 +1,10 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendComprobanteRecibidoEmail } from "@/lib/email";
+import { resolveOrganizationByHost } from "@/lib/tenant/resolve";
 import { MAX_CUSTOM_QTY, MIN_CUSTOM_QTY, PAQUETES, type PaqueteTipo } from "@/lib/constants";
 
 export type ReservationState =
@@ -96,13 +98,40 @@ export async function submitReservation(
     return { status: "error", error: INVALID_IMAGE_MESSAGE };
   }
 
+  // Host-based tenant resolution (design D6, same pattern as app/page.tsx /
+  // app/layout.tsx), used SOLELY to prefix the newly uploaded comprobante's
+  // storage path with {organization_id}/... (design D2's Storage tenant-scoping
+  // fix, task 4.9). Deliberately narrow scope: this does NOT switch
+  // reservar_numeros/marcar_en_verificacion below to the tenant-scoped RPCs
+  // (reservar_numeros_rifa etc.) -- that wiring is out of scope for this
+  // batch (Phase 5's onboarding wiring territory; see apply-progress). The
+  // resulting reservas row's organization_id therefore stays NULL via this
+  // legacy path regardless, same as before this change -- only the storage
+  // path gains tenant scoping. Fail-soft on resolution failure, matching
+  // app/page.tsx's/middleware.ts's fail-soft pattern for this same lookup:
+  // an unresolved Host degrades to the pre-4.9 flat path, it never blocks
+  // the reservation.
+  let organizationId: string | null = null;
+  try {
+    const headerList = await headers();
+    const host = headerList.get("host");
+    if (host) {
+      const org = await resolveOrganizationByHost(host);
+      organizationId = org?.id ?? null;
+    }
+  } catch (err) {
+    console.error("[reserva] tenant resolution for storage path failed", err);
+  }
+
   let storagePath: string | undefined;
 
   try {
     const supabase = createAdminClient();
 
     const extension = comprobante.name.split(".").pop() || "jpg";
-    storagePath = `${randomUUID()}.${extension}`;
+    storagePath = organizationId
+      ? `${organizationId}/${randomUUID()}.${extension}`
+      : `${randomUUID()}.${extension}`;
 
     const { error: uploadError } = await supabase.storage
       .from("comprobantes")
