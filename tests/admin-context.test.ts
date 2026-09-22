@@ -26,6 +26,7 @@ import { createTestOrg, cleanupOrg, type TestOrg } from "./helpers/fixtures";
 const mockState = vi.hoisted(() => ({
   host: "" as string,
   userClient: null as unknown,
+  forceHostResolutionError: false,
 }));
 
 vi.mock("server-only", () => ({}));
@@ -50,7 +51,12 @@ vi.mock("@/lib/tenant/resolve", async () => {
   });
   return {
     ...actual,
-    resolveOrganizationByHost: (host: string) => actual.fetchOrganizationByHost(admin, host),
+    resolveOrganizationByHost: (host: string) => {
+      if (mockState.forceHostResolutionError) {
+        return Promise.reject(new Error("simulated transient DB/network failure"));
+      }
+      return actual.fetchOrganizationByHost(admin, host);
+    },
   };
 });
 
@@ -73,6 +79,7 @@ describe("requireAdminContext", () => {
   afterEach(() => {
     mockState.host = "";
     mockState.userClient = null;
+    mockState.forceHostResolutionError = false;
   });
 
   afterAll(async () => {
@@ -106,6 +113,18 @@ describe("requireAdminContext", () => {
   function hostFor(org: TestOrg): string {
     return `${org.subdomain}.rifamakia.com`;
   }
+
+  it("throws AdminContextError (not a raw error) when Host resolution itself fails transiently", async () => {
+    const org = await newOrg("host-resolution-fails");
+    const user = await newUser("host-resolution-fails");
+    await addMembership(org, user, "owner");
+
+    mockState.host = hostFor(org);
+    mockState.userClient = user.client;
+    mockState.forceHostResolutionError = true;
+
+    await expect(requireAdminContext()).rejects.toBeInstanceOf(AdminContextError);
+  });
 
   it("denies when the caller has no membership row for the resolved organization", async () => {
     const org = await newOrg("no-membership");

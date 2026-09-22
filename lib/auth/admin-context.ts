@@ -48,7 +48,20 @@ export async function requireAdminContext(): Promise<AdminContext> {
     throw new AdminContextError("No se pudo resolver la organización");
   }
 
-  const org = await resolveOrganizationByHost(host);
+  let org;
+  try {
+    org = await resolveOrganizationByHost(host);
+  } catch (err) {
+    // A raw Postgrest/network error thrown here (not an AdminContextError)
+    // would otherwise propagate uncaught out of requireAdminContext() --
+    // AdminPage()'s catch block only redirects on AdminContextError, and
+    // this repo has no app/admin/error.tsx, so an unwrapped error crashes
+    // to Next.js's default unhandled-error page. Converting it here keeps
+    // this the fail-closed boundary (deny access) while routing through
+    // the existing AdminContextError -> redirect("/admin/login") path.
+    console.error("[admin-context] host resolution failed", err);
+    throw new AdminContextError("No se pudo resolver la organización");
+  }
   if (!org) {
     throw new AdminContextError("Organización no encontrada");
   }
