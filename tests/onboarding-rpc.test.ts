@@ -161,6 +161,61 @@ describe("crear_organizacion_con_rifa", () => {
     expect(members).toHaveLength(1);
   });
 
+  it.each([
+    ["empty organization name", { p_nombre: "   " }],
+    ["organization name over 80 chars", { p_nombre: "x".repeat(81) }],
+    ["null organization name", { p_nombre: null }],
+    ["empty raffle name", { p_raffle_nombre: "" }],
+    ["raffle name over 80 chars", { p_raffle_nombre: "x".repeat(81) }],
+    ["zero price", { p_precio_por_numero: 0 }],
+    ["negative price", { p_precio_por_numero: -5 }],
+    ["price above the cap", { p_precio_por_numero: 10_000_001 }],
+    ["null price", { p_precio_por_numero: null }],
+    ["max_numero below the minimum pool", { p_max_numero: 5 }],
+    ["max_numero above the cap", { p_max_numero: 100_000 }],
+    ["null max_numero", { p_max_numero: null }],
+    ["paquetes not an array", { p_paquetes: { tipo: "x" } }],
+    ["null paquetes", { p_paquetes: null }],
+    ["paquetes element not an object", { p_paquetes: [1] }],
+    ["paquetes element missing fields", { p_paquetes: [{ tipo: "paquete_10" }] }],
+    ["paquetes element with non-positive qty", { p_paquetes: [{ tipo: "p", qty: 0, price: 10 }] }],
+    ["paquetes element with non-positive price", { p_paquetes: [{ tipo: "p", qty: 10, price: 0 }] }],
+    ["paquetes element with non-numeric qty", { p_paquetes: [{ tipo: "p", qty: "10", price: 10 }] }],
+    ["too many paquetes", { p_paquetes: Array.from({ length: 21 }, () => ({ tipo: "p", qty: 10, price: 10 })) }],
+  ])("rejects direct-call abuse: %s", async (_label, overrides) => {
+    const user = await createAuthedUser("onb-abuse");
+    createdUserIds.push(user.userId);
+    const subdomain = sub("onb-abuse");
+
+    const { error } = await user.client.rpc("crear_organizacion_con_rifa", args(subdomain, overrides));
+    expect(error).not.toBeNull();
+
+    const { data: org } = await admin.from("organizations").select("id").eq("subdomain", subdomain).maybeSingle();
+    expect(org).toBeNull();
+    const { data: members } = await admin.from("organization_members").select("id").eq("user_id", user.userId);
+    expect(members).toEqual([]);
+  });
+
+  it("treats NULL p_numeros_bendecidos as an empty list", async () => {
+    const user = await createAuthedUser("onb-nullbless");
+    createdUserIds.push(user.userId);
+
+    const { data, error } = await user.client.rpc(
+      "crear_organizacion_con_rifa",
+      args(sub("onb-nullbless"), { p_numeros_bendecidos: null })
+    );
+    expect(error).toBeNull();
+    const row = (data as { raffle_id: string }[])[0];
+    const { data: blessed } = await admin
+      .from("numeros")
+      .select("numero")
+      .eq("raffle_id", row.raffle_id)
+      .eq("es_bendecido", true);
+    expect(blessed).toEqual([]);
+    const { data: raffle } = await admin.from("raffles").select("numeros_bendecidos").eq("id", row.raffle_id).single();
+    expect(raffle.numeros_bendecidos).toEqual([]);
+  });
+
   it("the bare crear_organizacion RPC enforces the same one-organization-per-caller guard", async () => {
     const user = await createAuthedUser("onb-bare");
     createdUserIds.push(user.userId);

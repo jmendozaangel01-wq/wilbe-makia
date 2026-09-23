@@ -83,7 +83,56 @@ language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_org_id uuid;
   v_raffle_id uuid;
+  v_paquete jsonb;
+  v_blessed integer[];
 begin
+  -- Server-side validation: the raffles CHECK constraints only cover some of
+  -- these, and this RPC is directly callable by any authenticated user.
+  -- Keep limits in sync with lib/onboarding/validate.ts.
+  if p_nombre is null or length(trim(p_nombre)) < 1 or length(trim(p_nombre)) > 80 then
+    raise exception 'Nombre de organización inválido';
+  end if;
+
+  if p_raffle_nombre is null or length(trim(p_raffle_nombre)) < 1 or length(trim(p_raffle_nombre)) > 80 then
+    raise exception 'Nombre de rifa inválido';
+  end if;
+
+  if p_max_numero is null or p_max_numero < 9 or p_max_numero > 99999 then
+    raise exception 'max_numero fuera de rango';
+  end if;
+
+  if p_precio_por_numero is null or p_precio_por_numero < 1 or p_precio_por_numero > 10000000 then
+    raise exception 'Precio por número fuera de rango';
+  end if;
+
+  if p_paquetes is null or jsonb_typeof(p_paquetes) <> 'array' or jsonb_array_length(p_paquetes) > 20 then
+    raise exception 'Paquetes inválidos';
+  end if;
+
+  for v_paquete in select * from jsonb_array_elements(p_paquetes) loop
+    if jsonb_typeof(v_paquete) <> 'object'
+       or jsonb_typeof(v_paquete -> 'tipo') is distinct from 'string'
+       or length(trim(v_paquete ->> 'tipo')) < 1
+       or length(v_paquete ->> 'tipo') > 40
+       or jsonb_typeof(v_paquete -> 'qty') is distinct from 'number'
+       or (v_paquete ->> 'qty') !~ '^[0-9]{1,6}$'
+       or jsonb_typeof(v_paquete -> 'price') is distinct from 'number'
+       or (v_paquete ->> 'price') !~ '^[0-9]{1,10}$' then
+      raise exception 'Paquete inválido';
+    end if;
+
+    if (v_paquete ->> 'qty')::bigint < 1
+       or (v_paquete ->> 'qty')::bigint > p_max_numero + 1
+       or (v_paquete ->> 'price')::bigint < 1
+       or (v_paquete ->> 'price')::bigint > 2000000000 then
+      raise exception 'Paquete inválido';
+    end if;
+  end loop;
+
+  -- NULL means "no blessed numbers": normalize so downstream array
+  -- comparisons (n = any(...)) never see NULL.
+  v_blessed := coalesce(p_numeros_bendecidos, array[]::integer[]);
+
   select o.organization_id into v_org_id from crear_organizacion(p_nombre, p_subdomain) o;
 
   v_raffle_id := crear_rifa(
@@ -92,7 +141,7 @@ begin
     p_max_numero,
     p_precio_por_numero,
     p_paquetes,
-    p_numeros_bendecidos,
+    v_blessed,
     p_sorteo_fecha,
     p_nequi_numero,
     p_nequi_nombre
