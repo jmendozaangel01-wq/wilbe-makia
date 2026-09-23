@@ -2,9 +2,15 @@ import { headers } from "next/headers";
 import LoginForm from "@/components/admin/LoginForm";
 import { resolveOrganizationByHost, DEFAULT_ORG_NAME } from "@/lib/tenant/resolve";
 
-export default async function AdminLoginPage() {
+export default async function AdminLoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string | string[] }>;
+}) {
   const headerList = await headers();
   const host = headerList.get("host");
+  const { error } = await searchParams;
+  const initialError = typeof error === "string" ? error : null;
 
   let org = null;
   if (host) {
@@ -30,7 +36,7 @@ export default async function AdminLoginPage() {
         padding: "clamp(16px, 6vw, 24px)",
       }}
     >
-      <LoginForm orgName={orgName} />
+      <LoginForm orgName={orgName} initialError={initialError} />
     </div>
   );
 }
