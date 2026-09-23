@@ -20,13 +20,13 @@ export async function GET(request: NextRequest) {
   };
 
   if (!code) {
-    return failure("Missing authorization code");
+    return failure("No recibimos el código de autorización de Google.");
   }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
-    return failure("Sign-in failed. Please try again.");
+    return failure("No pudimos iniciar tu sesión. Intenta de nuevo.");
   }
 
   const host = request.headers.get("host") ?? request.nextUrl.host;
@@ -36,6 +36,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(destination, origin));
   } catch (err) {
     console.error("[auth/callback] destination lookup failed", err);
-    return failure("Sign-in failed. Please try again.");
+    return failure("No pudimos iniciar tu sesión. Intenta de nuevo.");
   }
 }

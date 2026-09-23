@@ -71,38 +71,38 @@ function requiredText(raw: string, max: number, message: string): { value?: stri
 export function validateOnboardingInput(input: OnboardingInput): OnboardingResult {
   const errors: OnboardingErrors = {};
 
-  const orgName = requiredText(input.orgName, 60, "Enter an organization name (up to 60 characters).");
+  const orgName = requiredText(input.orgName, 60, "Ingresa el nombre de tu organización (máximo 60 caracteres).");
   if (orgName.error) errors.orgName = orgName.error;
 
   const subdomain = input.subdomain.trim().toLowerCase();
   if (!SUBDOMAIN_PATTERN.test(subdomain)) {
-    errors.subdomain = "Use 1-63 lowercase letters, digits or hyphens (no leading or trailing hyphen).";
+    errors.subdomain = "Usa de 1 a 63 letras minúsculas, números o guiones (sin guion al inicio ni al final).";
   } else if (isReservedSubdomain(subdomain)) {
-    errors.subdomain = "That subdomain is reserved. Please choose another one.";
+    errors.subdomain = "Ese subdominio está reservado. Elige otro.";
   }
 
-  const raffleName = requiredText(input.raffleName, 80, "Enter a raffle name (up to 80 characters).");
+  const raffleName = requiredText(input.raffleName, 80, "Ingresa el nombre de la rifa (máximo 80 caracteres).");
   if (raffleName.error) errors.raffleName = raffleName.error;
 
   const maxNumero = parseInteger(input.maxNumero);
   if (maxNumero === null || maxNumero < MIN_MAX_NUMERO || maxNumero > MAX_MAX_NUMERO) {
-    errors.maxNumero = `Enter a whole number between ${MIN_MAX_NUMERO} and ${MAX_MAX_NUMERO}.`;
+    errors.maxNumero = `Ingresa un número entero entre ${MIN_MAX_NUMERO} y ${MAX_MAX_NUMERO}.`;
   }
 
   const precio = parseInteger(input.precioPorNumero);
   if (precio === null || precio < 1 || precio > MAX_PRICE) {
-    errors.precioPorNumero = `Enter a whole price between 1 and ${MAX_PRICE}.`;
+    errors.precioPorNumero = `Ingresa un precio entero entre 1 y ${MAX_PRICE}.`;
   }
 
-  const sorteoFecha = requiredText(input.sorteoFecha, 40, "Enter the draw date (up to 40 characters).");
+  const sorteoFecha = requiredText(input.sorteoFecha, 40, "Ingresa la fecha del sorteo (máximo 40 caracteres).");
   if (sorteoFecha.error) errors.sorteoFecha = sorteoFecha.error;
 
   const nequiNumero = input.nequiNumero.trim();
   if (!/^\d{10}$/.test(nequiNumero)) {
-    errors.nequiNumero = "Enter a 10-digit Nequi number.";
+    errors.nequiNumero = "Ingresa un número Nequi de 10 dígitos.";
   }
 
-  const nequiNombre = requiredText(input.nequiNombre, 80, "Enter the Nequi account holder name.");
+  const nequiNombre = requiredText(input.nequiNombre, 80, "Ingresa el nombre del titular de la cuenta Nequi.");
   if (nequiNombre.error) errors.nequiNombre = nequiNombre.error;
 
   let numerosBendecidos: number[] = [];
@@ -115,7 +115,7 @@ export function validateOnboardingInput(input: OnboardingInput): OnboardingResul
       unique.some((n) => n === null || n > upperBound) ||
       unique.length > MAX_BLESSED
     ) {
-      errors.numerosBendecidos = `Use up to ${MAX_BLESSED} comma-separated numbers within the raffle range.`;
+      errors.numerosBendecidos = `Usa hasta ${MAX_BLESSED} números separados por comas, dentro del rango de la rifa.`;
     } else {
       numerosBendecidos = unique as number[];
     }

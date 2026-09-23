@@ -22,7 +22,7 @@ const FIELDS: (keyof OnboardingInput)[] = [
   "numerosBendecidos",
 ];
 
-const GENERIC_ERROR = "We could not create your organization. Please try again in a few minutes.";
+const GENERIC_ERROR = "No pudimos crear tu organización. Intenta de nuevo en unos minutos.";
 
 function readInput(formData: FormData): OnboardingInput {
   return Object.fromEntries(FIELDS.map((f) => [f, String(formData.get(f) ?? "")])) as unknown as OnboardingInput;
@@ -71,12 +71,12 @@ export async function createOrganizationAction(
 
   if (error) {
     if (error.code === "23505") {
-      return { status: "error", fieldErrors: { subdomain: "That subdomain is already taken." }, values };
+      return { status: "error", fieldErrors: { subdomain: "Ese subdominio ya está en uso." }, values };
     }
     if (error.message.includes("Subdomain")) {
       return {
         status: "error",
-        fieldErrors: { subdomain: "That subdomain is not available. Please choose another one." },
+        fieldErrors: { subdomain: "Ese subdominio no está disponible. Elige otro." },
         values,
       };
     }

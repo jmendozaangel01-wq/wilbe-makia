@@ -133,7 +133,7 @@ describe("createOrganizationAction", () => {
     mockState.client = b.client;
     const second = await run(form(subdomain));
     expect(second.state?.status).toBe("error");
-    if (second.state?.status === "error") expect(second.state.fieldErrors.subdomain).toMatch(/taken/i);
+    if (second.state?.status === "error") expect(second.state.fieldErrors.subdomain).toMatch(/en uso/i);
   });
 
   it("redirects an unauthenticated caller to login", async () => {
