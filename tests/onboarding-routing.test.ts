@@ -17,9 +17,9 @@ describe("safeNextPath", () => {
 
 describe("buildTenantAdminUrl", () => {
   it("builds https://<sub>.<apex>/admin for production hosts", () => {
-    expect(buildTenantAdminUrl("acme", "rifamakia.com")).toBe("https://acme.rifamakia.com/admin");
-    expect(buildTenantAdminUrl("acme", "www.rifamakia.com")).toBe("https://acme.rifamakia.com/admin");
-    expect(buildTenantAdminUrl("acme", "beta.rifamakia.com")).toBe("https://acme.rifamakia.com/admin");
+    expect(buildTenantAdminUrl("acme", "benditarifa.com")).toBe("https://acme.benditarifa.com/admin");
+    expect(buildTenantAdminUrl("acme", "www.benditarifa.com")).toBe("https://acme.benditarifa.com/admin");
+    expect(buildTenantAdminUrl("acme", "beta.benditarifa.com")).toBe("https://acme.benditarifa.com/admin");
   });
 
   it("uses http and keeps the port on localhost", () => {
@@ -28,7 +28,7 @@ describe("buildTenantAdminUrl", () => {
   });
 
   it("accepts a custom path", () => {
-    expect(buildTenantAdminUrl("acme", "rifamakia.com", "/onboarding")).toBe("https://acme.rifamakia.com/onboarding");
+    expect(buildTenantAdminUrl("acme", "benditarifa.com", "/onboarding")).toBe("https://acme.benditarifa.com/onboarding");
   });
 
   it("falls back to a relative path for unknown hosts (e.g. preview deployments)", () => {

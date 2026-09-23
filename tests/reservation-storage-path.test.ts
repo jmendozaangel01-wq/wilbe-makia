@@ -109,7 +109,7 @@ describe("submitReservation tenant wiring", () => {
 
   it("prefixes the uploaded comprobante path with the Host-resolved organization_id, and sets organization_id/raffle_id on the reservas row", async () => {
     const { org, raffle } = await newOrgWithActiveRaffle("reserva-storage");
-    mockState.host = `${org.subdomain}.rifamakia.com`;
+    mockState.host = `${org.subdomain}.benditarifa.com`;
 
     const correo = `buyer-${Date.now()}-${Math.random()}@example.com`;
     const result = await submitReservation({ status: "idle" }, buildFormData(correo));
@@ -138,7 +138,7 @@ describe("submitReservation tenant wiring", () => {
 
   it("makes the reservation visible to an admin query scoped by organization_id, and actionable via confirmar_pago_rifa", async () => {
     const { org } = await newOrgWithActiveRaffle("reserva-admin-visibility");
-    mockState.host = `${org.subdomain}.rifamakia.com`;
+    mockState.host = `${org.subdomain}.benditarifa.com`;
 
     const correo = `buyer-${Date.now()}-${Math.random()}@example.com`;
     const result = await submitReservation({ status: "idle" }, buildFormData(correo));
@@ -171,7 +171,7 @@ describe("submitReservation tenant wiring", () => {
   });
 
   it("fails with a clear buyer-facing error and uploads nothing when the Host does not resolve to any organization", async () => {
-    mockState.host = "unknown-subdomain-does-not-exist.rifamakia.com";
+    mockState.host = "unknown-subdomain-does-not-exist.benditarifa.com";
 
     const correo = `buyer-${Date.now()}-${Math.random()}@example.com`;
     const result = await submitReservation({ status: "idle" }, buildFormData(correo));
@@ -187,7 +187,7 @@ describe("submitReservation tenant wiring", () => {
     createdOrgIds.push(org.id);
     // Deliberately no createTestRaffle() call -- org exists, but has no
     // raffle at all, let alone an 'activa' one.
-    mockState.host = `${org.subdomain}.rifamakia.com`;
+    mockState.host = `${org.subdomain}.benditarifa.com`;
 
     const correo = `buyer-${Date.now()}-${Math.random()}@example.com`;
     const result = await submitReservation({ status: "idle" }, buildFormData(correo));

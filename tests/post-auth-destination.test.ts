@@ -38,21 +38,21 @@ describe("resolvePostAuthDestination", () => {
   it("routes a user with zero memberships to /onboarding", async () => {
     const user = await createAuthedUser("dest-none");
     userIds.push(user.userId);
-    expect(await resolvePostAuthDestination(user.client, { host: "rifamakia.com", next: "/admin" })).toBe(
+    expect(await resolvePostAuthDestination(user.client, { host: "benditarifa.com", next: "/admin" })).toBe(
       "/onboarding"
     );
   });
 
   it("keeps a member on the current tenant host and honours next", async () => {
     const { user, org } = await memberOf("dest-own");
-    const host = `${org.subdomain}.rifamakia.com`;
+    const host = `${org.subdomain}.benditarifa.com`;
     expect(await resolvePostAuthDestination(user.client, { host, next: "/admin" })).toBe("/admin");
   });
 
   it("sends a member arriving on the wrong host to their own tenant's admin", async () => {
     const { user, org } = await memberOf("dest-wrong");
-    expect(await resolvePostAuthDestination(user.client, { host: "someone-else.rifamakia.com", next: "/admin" })).toBe(
-      `https://${org.subdomain}.rifamakia.com/admin`
+    expect(await resolvePostAuthDestination(user.client, { host: "someone-else.benditarifa.com", next: "/admin" })).toBe(
+      `https://${org.subdomain}.benditarifa.com/admin`
     );
   });
 

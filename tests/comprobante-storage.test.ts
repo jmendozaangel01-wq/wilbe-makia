@@ -114,7 +114,7 @@ describe("getComprobanteUrl", () => {
   }
 
   function hostFor(org: TestOrg): string {
-    return `${org.subdomain}.rifamakia.com`;
+    return `${org.subdomain}.benditarifa.com`;
   }
 
   async function uploadComprobante(path: string): Promise<void> {

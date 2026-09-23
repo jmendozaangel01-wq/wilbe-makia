@@ -12,7 +12,7 @@ import { cleanupOrg, createTestOrg } from "./helpers/fixtures";
 
 const mockState = vi.hoisted(() => ({
   client: null as SupabaseClient | null,
-  host: "rifamakia.com",
+  host: "benditarifa.com",
 }));
 
 vi.mock("next/headers", () => ({
@@ -63,8 +63,8 @@ describe("getAdminDeniedRedirect", () => {
     await admin.from("organization_members").insert({ organization_id: org.id, user_id: user.userId, role: "owner" });
 
     mockState.client = user.client;
-    mockState.host = "unrelated.rifamakia.com";
-    expect(await getAdminDeniedRedirect()).toBe(`https://${org.subdomain}.rifamakia.com/admin`);
+    mockState.host = "unrelated.benditarifa.com";
+    expect(await getAdminDeniedRedirect()).toBe(`https://${org.subdomain}.benditarifa.com/admin`);
   });
 
   it("sends a member of the current tenant (denied for another reason) to a terminal no-access page, not /admin/login", async () => {
@@ -75,7 +75,7 @@ describe("getAdminDeniedRedirect", () => {
     await admin.from("organization_members").insert({ organization_id: org.id, user_id: user.userId, role: "owner" });
 
     mockState.client = user.client;
-    mockState.host = `${org.subdomain}.rifamakia.com`;
+    mockState.host = `${org.subdomain}.benditarifa.com`;
     expect(await getAdminDeniedRedirect()).toBe("/admin/login?error=no_access");
   });
 
@@ -94,7 +94,7 @@ describe("getAdminDeniedRedirect", () => {
   it("fails to a terminal page instead of throwing when the membership lookup fails", async () => {
     const user = await createAuthedUser("denied-lookup");
     userIds.push(user.userId);
-    mockState.host = "rifamakia.com";
+    mockState.host = "benditarifa.com";
     mockState.client = {
       auth: user.client.auth,
       from: () => {

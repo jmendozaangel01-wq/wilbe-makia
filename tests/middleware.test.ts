@@ -71,7 +71,7 @@ describe("middleware subscription gate", () => {
   }
 
   function hostFor(org: TestOrg): string {
-    return `${org.subdomain}.rifamakia.com`;
+    return `${org.subdomain}.benditarifa.com`;
   }
 
   function requestFor(org: TestOrg, pathname = "/admin"): NextRequest {

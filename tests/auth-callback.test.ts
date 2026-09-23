@@ -41,7 +41,7 @@ afterAll(async () => {
 });
 
 function callbackRequest(query: string): NextRequest {
-  return new NextRequest(`http://rifamakia.com/auth/callback${query}`, { headers: { host: "rifamakia.com" } });
+  return new NextRequest(`http://benditarifa.com/auth/callback${query}`, { headers: { host: "benditarifa.com" } });
 }
 
 describe("GET /auth/callback", () => {
@@ -80,7 +80,7 @@ describe("GET /auth/callback", () => {
 
     const res = await GET(callbackRequest("?code=good-code&next=//evil.example"));
     const location = new URL(res.headers.get("location")!);
-    expect(location.host).toBe("rifamakia.com");
+    expect(location.host).toBe("benditarifa.com");
   });
 
   it.each([
@@ -97,7 +97,7 @@ describe("GET /auth/callback", () => {
     await admin.from("organization_members").insert({ organization_id: org.id, user_id: user.userId, role: "owner" });
     mockState.memberClient = user.client;
 
-    const host = `${org.subdomain}.rifamakia.com`;
+    const host = `${org.subdomain}.benditarifa.com`;
     const req = new NextRequest(`http://${host}/auth/callback?code=good-code&next=${encoded}`, { headers: { host } });
     const res = await GET(req);
     const location = new URL(res.headers.get("location")!);

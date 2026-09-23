@@ -10,7 +10,7 @@ import { createAuthedUser, deleteTestUser } from "./helpers/auth";
 
 const mockState = vi.hoisted(() => ({
   client: null as SupabaseClient | null,
-  host: "rifamakia.com",
+  host: "benditarifa.com",
 }));
 
 class RedirectError extends Error {
@@ -98,7 +98,7 @@ describe("createOrganizationAction", () => {
     const subdomain = uniqueSub("act-ok");
 
     const result = await run(form(subdomain));
-    expect(result.redirect).toBe(`https://${subdomain}.rifamakia.com/admin`);
+    expect(result.redirect).toBe(`https://${subdomain}.benditarifa.com/admin`);
 
     const { data: org } = await admin.from("organizations").select("id").eq("subdomain", subdomain).single();
     const { data: raffle } = await admin.from("raffles").select("estado, nombre").eq("organization_id", org!.id);

@@ -111,7 +111,7 @@ describe("requireAdminContext", () => {
   }
 
   function hostFor(org: TestOrg): string {
-    return `${org.subdomain}.rifamakia.com`;
+    return `${org.subdomain}.benditarifa.com`;
   }
 
   it("throws AdminContextError (not a raw error) when Host resolution itself fails transiently", async () => {
@@ -172,7 +172,7 @@ describe("requireAdminContext", () => {
     await addMembership(org, user, "owner");
 
     try {
-      mockState.host = "rifamakia.com";
+      mockState.host = "benditarifa.com";
       mockState.userClient = user.client;
 
       const context = await requireAdminContext();
