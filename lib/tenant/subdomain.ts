@@ -12,7 +12,7 @@
 // include at least www, admin, app, api).
 const RESERVED_SUBDOMAINS = new Set(["admin", "app", "api", "auth", "static"]);
 
-export const DEFAULT_APEX_DOMAIN = "rifamakia.com";
+export const DEFAULT_APEX_DOMAIN = "benditarifa.com";
 
 export type SubdomainResult =
   | { kind: "apex" }

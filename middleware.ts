@@ -2,6 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveOrganizationByHost } from "@/lib/tenant/resolve";
 import { hasActiveAccess } from "@/lib/billing/access";
+import { getAuthCookieOptions } from "@/lib/supabase/cookie-options";
+import { isLoginErrorCode } from "@/lib/auth/login-errors";
 
 /**
  * Gates /admin behind a signed-in Supabase Auth session, AND (design D3)
@@ -23,6 +25,7 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: getAuthCookieOptions(),
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -48,7 +51,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isLoginRoute) {
+  // A signed-in user carrying a known error code is on a terminal page (e.g.
+  // denied access to this tenant); bouncing them to /admin would loop.
+  if (user && isLoginRoute && !isLoginErrorCode(request.nextUrl.searchParams.get("error"))) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin";
     return NextResponse.redirect(url);

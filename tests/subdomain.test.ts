@@ -5,28 +5,28 @@ import { DEFAULT_APEX_DOMAIN, isReservedSubdomain, parseSubdomain } from "../lib
 
 describe("parseSubdomain", () => {
   it("resolves the bare apex domain to the apex tenant (tenant zero)", () => {
-    expect(parseSubdomain("rifamakia.com")).toEqual({ kind: "apex" });
+    expect(parseSubdomain("benditarifa.com")).toEqual({ kind: "apex" });
   });
 
   it("resolves www to the apex tenant, not a reserved/unknown host", () => {
-    expect(parseSubdomain("www.rifamakia.com")).toEqual({ kind: "apex" });
+    expect(parseSubdomain("www.benditarifa.com")).toEqual({ kind: "apex" });
   });
 
   it("extracts a real tenant subdomain", () => {
-    expect(parseSubdomain("acme.rifamakia.com")).toEqual({ kind: "tenant", subdomain: "acme" });
+    expect(parseSubdomain("acme.benditarifa.com")).toEqual({ kind: "tenant", subdomain: "acme" });
   });
 
   it("extracts a tenant subdomain regardless of a trailing port", () => {
-    expect(parseSubdomain("acme.rifamakia.com:3000")).toEqual({ kind: "tenant", subdomain: "acme" });
+    expect(parseSubdomain("acme.benditarifa.com:3000")).toEqual({ kind: "tenant", subdomain: "acme" });
   });
 
   it("is case-insensitive", () => {
-    expect(parseSubdomain("ACME.RIFAMAKIA.COM")).toEqual({ kind: "tenant", subdomain: "acme" });
+    expect(parseSubdomain("ACME.BENDITARIFA.COM")).toEqual({ kind: "tenant", subdomain: "acme" });
   });
 
   it("classifies each reserved word as reserved, not a tenant", () => {
     for (const word of ["admin", "app", "api", "auth", "static"]) {
-      expect(parseSubdomain(`${word}.rifamakia.com`)).toEqual({ kind: "reserved", subdomain: word });
+      expect(parseSubdomain(`${word}.benditarifa.com`)).toEqual({ kind: "reserved", subdomain: word });
     }
   });
 
@@ -49,11 +49,11 @@ describe("parseSubdomain", () => {
 
   it("accepts a custom apex domain parameter instead of the default", () => {
     expect(parseSubdomain("acme.example.com", "example.com")).toEqual({ kind: "tenant", subdomain: "acme" });
-    expect(parseSubdomain("acme.rifamakia.com", "example.com")).toEqual({ kind: "apex" });
+    expect(parseSubdomain("acme.benditarifa.com", "example.com")).toEqual({ kind: "apex" });
   });
 
   it("exposes the default apex domain used when none is passed", () => {
-    expect(DEFAULT_APEX_DOMAIN).toBe("rifamakia.com");
+    expect(DEFAULT_APEX_DOMAIN).toBe("benditarifa.com");
   });
 });
 

@@ -61,13 +61,13 @@ describe("fetchOrganizationBySubdomain", () => {
 
 describe("fetchOrganizationByHost", () => {
   it("resolves the apex host to the platform-owner organization, not by subdomain string", async () => {
-    const org = await fetchOrganizationByHost(admin, "rifamakia.com");
+    const org = await fetchOrganizationByHost(admin, "benditarifa.com");
     expect(org).not.toBeNull();
     expect(org?.isPlatformOwner).toBe(true);
   });
 
   it("resolves www.<apex> the same way as the bare apex", async () => {
-    const org = await fetchOrganizationByHost(admin, "www.rifamakia.com");
+    const org = await fetchOrganizationByHost(admin, "www.benditarifa.com");
     expect(org).not.toBeNull();
     expect(org?.isPlatformOwner).toBe(true);
   });
@@ -81,7 +81,7 @@ describe("fetchOrganizationByHost", () => {
     expect(error).toBeNull();
     const insertedId = (inserted as { id: string }).id;
 
-    const org = await fetchOrganizationByHost(admin, "host-resolve-test-acme.rifamakia.com");
+    const org = await fetchOrganizationByHost(admin, "host-resolve-test-acme.benditarifa.com");
     expect(org).not.toBeNull();
     expect(org?.id).toBe(insertedId);
     expect(org?.isPlatformOwner).toBe(false);
@@ -90,12 +90,12 @@ describe("fetchOrganizationByHost", () => {
   });
 
   it("never resolves a reserved-word host to any organization", async () => {
-    const org = await fetchOrganizationByHost(admin, "admin.rifamakia.com");
+    const org = await fetchOrganizationByHost(admin, "admin.benditarifa.com");
     expect(org).toBeNull();
   });
 
   it("returns null for an unknown tenant subdomain host", async () => {
-    const org = await fetchOrganizationByHost(admin, "does-not-exist-anywhere.rifamakia.com");
+    const org = await fetchOrganizationByHost(admin, "does-not-exist-anywhere.benditarifa.com");
     expect(org).toBeNull();
   });
 });

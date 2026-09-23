@@ -71,7 +71,7 @@ describe("middleware subscription gate", () => {
   }
 
   function hostFor(org: TestOrg): string {
-    return `${org.subdomain}.rifamakia.com`;
+    return `${org.subdomain}.benditarifa.com`;
   }
 
   function requestFor(org: TestOrg, pathname = "/admin"): NextRequest {
@@ -120,5 +120,33 @@ describe("middleware subscription gate", () => {
     expect(response.status).toBe(307);
     const location = new URL(response.headers.get("location")!);
     expect(location.pathname).toBe("/admin/login");
+  });
+
+  it("bounces a signed-in user from /admin/login back to /admin", async () => {
+    const org = await newOrg("mw-login-bounce");
+    mockState.user = { id: "test-user" };
+
+    const response = await middleware(requestFor(org, "/admin/login"));
+
+    expect(response.status).toBe(307);
+    expect(new URL(response.headers.get("location")!).pathname).toBe("/admin");
+  });
+
+  it("does NOT bounce a signed-in user from /admin/login when a known error code is present (no redirect loop)", async () => {
+    const org = await newOrg("mw-login-terminal");
+    mockState.user = { id: "test-user" };
+
+    const response = await middleware(requestFor(org, "/admin/login?error=no_access"));
+
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("still bounces a signed-in user when the error code is not on the allowlist", async () => {
+    const org = await newOrg("mw-login-unknown");
+    mockState.user = { id: "test-user" };
+
+    const response = await middleware(requestFor(org, "/admin/login?error=whatever"));
+
+    expect(response.status).toBe(307);
   });
 });
