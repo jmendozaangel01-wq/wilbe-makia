@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getAdminDeniedRedirect } from "@/lib/onboarding/admin-denied";
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminContext, AdminContextError } from "@/lib/auth/admin-context";
@@ -11,7 +12,7 @@ export default async function AdminPage() {
     context = await requireAdminContext();
   } catch (err) {
     if (err instanceof AdminContextError) {
-      redirect("/admin/login");
+      redirect(await getAdminDeniedRedirect());
     }
     throw err;
   }

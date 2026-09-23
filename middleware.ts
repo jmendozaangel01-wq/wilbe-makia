@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveOrganizationByHost } from "@/lib/tenant/resolve";
 import { hasActiveAccess } from "@/lib/billing/access";
+import { getAuthCookieOptions } from "@/lib/supabase/cookie-options";
 
 /**
  * Gates /admin behind a signed-in Supabase Auth session, AND (design D3)
@@ -23,6 +24,7 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: getAuthCookieOptions(),
       cookies: {
         getAll() {
           return request.cookies.getAll();
