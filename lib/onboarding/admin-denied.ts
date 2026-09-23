@@ -1,6 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { loginErrorPath } from "@/lib/auth/login-errors";
 import { resolvePostAuthDestination } from "./destination";
 
 /**
@@ -13,7 +14,10 @@ import { resolvePostAuthDestination } from "./destination";
  *   routed to creation);
  * - member of another tenant -> that tenant's admin;
  * - member of this very tenant, denied for another reason (e.g. lapsed
- *   subscription) -> /admin/login, the pre-existing behavior.
+ *   subscription), or on an unrecognised host -> a terminal
+ *   /admin/login?error=no_access that middleware does not bounce;
+ * - membership lookup failure -> terminal /admin/login?error=lookup_failed
+ *   instead of a 500.
  */
 export async function getAdminDeniedRedirect(): Promise<string> {
   const supabase = await createClient();
@@ -28,6 +32,11 @@ export async function getAdminDeniedRedirect(): Promise<string> {
   const headerList = await headers();
   const host = headerList.get("host") ?? "";
 
-  const destination = await resolvePostAuthDestination(supabase, { host, next: "/admin" });
-  return destination === "/admin" ? "/admin/login" : destination;
+  try {
+    const destination = await resolvePostAuthDestination(supabase, { host, next: "/admin" });
+    return destination === "/admin" ? loginErrorPath("no_access") : destination;
+  } catch (err) {
+    console.error("[admin-denied] membership lookup failed", err);
+    return loginErrorPath("lookup_failed");
+  }
 }

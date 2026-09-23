@@ -56,6 +56,13 @@ describe("resolvePostAuthDestination", () => {
     );
   });
 
+  it("sends a non-owner member on an unrecognised host (e.g. a Vercel preview) to the terminal no-access page", async () => {
+    const { user } = await memberOf("dest-preview");
+    expect(
+      await resolvePostAuthDestination(user.client, { host: "my-app-git-branch.vercel.app", next: "/admin" })
+    ).toBe("/admin/login?error=no_access");
+  });
+
   it("uses http + port for local dev hosts", async () => {
     const { user, org } = await memberOf("dest-local");
     expect(await resolvePostAuthDestination(user.client, { host: "localhost:3000", next: "/admin" })).toBe(

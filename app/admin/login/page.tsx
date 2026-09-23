@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import LoginForm from "@/components/admin/LoginForm";
+import { getLoginErrorMessage } from "@/lib/auth/login-errors";
 import { resolveOrganizationByHost, DEFAULT_ORG_NAME } from "@/lib/tenant/resolve";
 
 export default async function AdminLoginPage({
@@ -10,7 +11,8 @@ export default async function AdminLoginPage({
   const headerList = await headers();
   const host = headerList.get("host");
   const { error } = await searchParams;
-  const initialError = typeof error === "string" ? error : null;
+  // Only allowlisted codes render, as fixed messages -- never the raw value.
+  const initialError = getLoginErrorMessage(typeof error === "string" ? error : null);
 
   let org = null;
   if (host) {

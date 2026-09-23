@@ -67,7 +67,7 @@ describe("getAdminDeniedRedirect", () => {
     expect(await getAdminDeniedRedirect()).toBe(`https://${org.subdomain}.rifamakia.com/admin`);
   });
 
-  it("falls back to /admin/login for a member of the current tenant (denied for another reason)", async () => {
+  it("sends a member of the current tenant (denied for another reason) to a terminal no-access page, not /admin/login", async () => {
     const user = await createAuthedUser("denied-same");
     userIds.push(user.userId);
     const org = await createTestOrg(admin, "denied-same");
@@ -76,6 +76,33 @@ describe("getAdminDeniedRedirect", () => {
 
     mockState.client = user.client;
     mockState.host = `${org.subdomain}.rifamakia.com`;
-    expect(await getAdminDeniedRedirect()).toBe("/admin/login");
+    expect(await getAdminDeniedRedirect()).toBe("/admin/login?error=no_access");
+  });
+
+  it("sends a member on an unrecognised host (e.g. a Vercel preview) to the terminal no-access page", async () => {
+    const user = await createAuthedUser("denied-preview");
+    userIds.push(user.userId);
+    const org = await createTestOrg(admin, "denied-preview");
+    orgIds.push(org.id);
+    await admin.from("organization_members").insert({ organization_id: org.id, user_id: user.userId, role: "owner" });
+
+    mockState.client = user.client;
+    mockState.host = "my-app-git-branch.vercel.app";
+    expect(await getAdminDeniedRedirect()).toBe("/admin/login?error=no_access");
+  });
+
+  it("fails to a terminal page instead of throwing when the membership lookup fails", async () => {
+    const user = await createAuthedUser("denied-lookup");
+    userIds.push(user.userId);
+    mockState.host = "rifamakia.com";
+    mockState.client = {
+      auth: user.client.auth,
+      from: () => {
+        throw new Error("db down");
+      },
+    } as unknown as SupabaseClient;
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await getAdminDeniedRedirect()).toBe("/admin/login?error=lookup_failed");
+    spy.mockRestore();
   });
 });

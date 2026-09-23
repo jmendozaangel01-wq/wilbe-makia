@@ -48,7 +48,9 @@ describe("GET /auth/callback", () => {
   it("redirects to login with an error when the code is missing", async () => {
     const res = await GET(callbackRequest(""));
     expect(res.status).toBe(307);
-    expect(new URL(res.headers.get("location")!).pathname).toBe("/admin/login");
+    const location = new URL(res.headers.get("location")!);
+    expect(location.pathname).toBe("/admin/login");
+    expect(location.searchParams.get("error")).toBe("oauth_missing_code");
   });
 
   it("redirects to login with an error when the code exchange fails", async () => {
@@ -57,7 +59,7 @@ describe("GET /auth/callback", () => {
     mockState.exchangeError = null;
     const location = new URL(res.headers.get("location")!);
     expect(location.pathname).toBe("/admin/login");
-    expect(location.searchParams.get("error")).toBeTruthy();
+    expect(location.searchParams.get("error")).toBe("oauth_failed");
   });
 
   it("sends a brand-new user (no membership) to /onboarding", async () => {

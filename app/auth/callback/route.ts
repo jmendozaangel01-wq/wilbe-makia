@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { loginErrorPath, type LoginErrorCode } from "@/lib/auth/login-errors";
 import { resolvePostAuthDestination } from "@/lib/onboarding/destination";
 
 /**
@@ -13,20 +14,16 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
 
-  const failure = (message: string) => {
-    const url = new URL("/admin/login", origin);
-    url.searchParams.set("error", message);
-    return NextResponse.redirect(url);
-  };
+  const failure = (code: LoginErrorCode) => NextResponse.redirect(new URL(loginErrorPath(code), origin));
 
   if (!code) {
-    return failure("No recibimos el código de autorización de Google.");
+    return failure("oauth_missing_code");
   }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
-    return failure("No pudimos iniciar tu sesión. Intenta de nuevo.");
+    return failure("oauth_failed");
   }
 
   const host = request.headers.get("host") ?? request.nextUrl.host;
@@ -36,6 +33,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(destination, origin));
   } catch (err) {
     console.error("[auth/callback] destination lookup failed", err);
-    return failure("No pudimos iniciar tu sesión. Intenta de nuevo.");
+    return failure("oauth_failed");
   }
 }

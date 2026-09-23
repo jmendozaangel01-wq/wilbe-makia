@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { parseSubdomain } from "../tenant/subdomain";
+import { loginErrorPath } from "../auth/login-errors";
 import { buildTenantAdminUrl, safeNextPath } from "./routing";
 
 interface MembershipOrg {
@@ -37,7 +38,9 @@ export async function fetchMemberOrganizations(supabase: Pick<SupabaseClient, "f
  * - otherwise -> the admin area of their own tenant. Session cookies are
  *   host-scoped unless NEXT_PUBLIC_COOKIE_DOMAIN is set (see
  *   lib/supabase/cookie-options.ts), so cross-host hops need that env var in
- *   production for the session to follow the user.
+ *   production for the session to follow the user;
+ * - a member on an unrecognised host (no routable tenant URL) -> the terminal
+ *   /admin/login?error=no_access page.
  */
 export async function resolvePostAuthDestination(
   supabase: Pick<SupabaseClient, "from">,
@@ -58,5 +61,9 @@ export async function resolvePostAuthDestination(
     return safeNextPath(next);
   }
 
-  return buildTenantAdminUrl(orgs[0].subdomain, host);
+  const tenantUrl = buildTenantAdminUrl(orgs[0].subdomain, host);
+  // buildTenantAdminUrl() returns a relative path on unrecognised hosts
+  // (e.g. Vercel previews), which would just re-enter /admin on a host where
+  // this user is not a member and loop. End on a terminal page instead.
+  return tenantUrl.startsWith("/") ? loginErrorPath("no_access") : tenantUrl;
 }

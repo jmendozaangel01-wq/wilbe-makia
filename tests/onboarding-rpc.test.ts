@@ -213,7 +213,7 @@ describe("crear_organizacion_con_rifa", () => {
       .eq("es_bendecido", true);
     expect(blessed).toEqual([]);
     const { data: raffle } = await admin.from("raffles").select("numeros_bendecidos").eq("id", row.raffle_id).single();
-    expect(raffle.numeros_bendecidos).toEqual([]);
+    expect(raffle?.numeros_bendecidos).toEqual([]);
   });
 
   it("the bare crear_organizacion RPC enforces the same one-organization-per-caller guard", async () => {
