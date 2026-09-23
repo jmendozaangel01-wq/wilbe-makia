@@ -148,6 +148,19 @@ describe("crear_organizacion_con_rifa", () => {
     expect((await user.client.rpc("crear_organizacion_con_rifa", args(sub("onb-twice-2")))).error).not.toBeNull();
   });
 
+  it("allows exactly one organization when the same user calls concurrently", async () => {
+    const user = await createAuthedUser("onb-race");
+    createdUserIds.push(user.userId);
+
+    const results = await Promise.all(
+      [1, 2, 3, 4].map((i) => user.client.rpc("crear_organizacion_con_rifa", args(sub(`onb-race-${i}`))))
+    );
+    expect(results.filter((r) => r.error === null)).toHaveLength(1);
+
+    const { data: members } = await admin.from("organization_members").select("id").eq("user_id", user.userId);
+    expect(members).toHaveLength(1);
+  });
+
   it("the bare crear_organizacion RPC enforces the same one-organization-per-caller guard", async () => {
     const user = await createAuthedUser("onb-bare");
     createdUserIds.push(user.userId);

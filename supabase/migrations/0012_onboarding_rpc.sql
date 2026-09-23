@@ -6,7 +6,9 @@
 --    unlimited tenants (each with its own 14-day trial). v1 has no team
 --    invites and the onboarding wizard only serves users with zero
 --    memberships, so a caller who already belongs to an organization is
---    always a misuse. Signature and grants are unchanged (create or replace).
+--    always a misuse. The check runs under a per-user advisory transaction
+--    lock so concurrent calls cannot both pass it. Signature and grants are
+--    unchanged (create or replace).
 --
 -- 2. crear_organizacion_con_rifa() wraps crear_organizacion() + crear_rifa()
 --    so the wizard creates org, owner membership, raffle and seeded numeros
@@ -28,6 +30,11 @@ begin
   if auth.uid() is null then
     raise exception 'No autorizado';
   end if;
+
+  -- Serialize concurrent calls by the same user: without the lock two
+  -- parallel calls both pass the EXISTS check below and each mint an org.
+  -- Transaction-scoped, released automatically at commit/rollback.
+  perform pg_advisory_xact_lock(hashtext(auth.uid()::text));
 
   if exists (select 1 from organization_members where user_id = auth.uid()) then
     raise exception 'Ya perteneces a una organización';
