@@ -88,8 +88,9 @@ declare
 begin
   -- Server-side validation: the raffles CHECK constraints only cover some of
   -- these, and this RPC is directly callable by any authenticated user.
-  -- Keep limits in sync with lib/onboarding/validate.ts.
-  if p_nombre is null or length(trim(p_nombre)) < 1 or length(trim(p_nombre)) > 80 then
+  -- Keep limits in sync with lib/onboarding/validate.ts (org name 60, raffle
+  -- name 80, blessed 50, nequi number 10 digits, nequi name 80, date 40).
+  if p_nombre is null or length(trim(p_nombre)) < 1 or length(trim(p_nombre)) > 60 then
     raise exception 'Nombre de organización inválido';
   end if;
 
@@ -132,6 +133,31 @@ begin
   -- NULL means "no blessed numbers": normalize so downstream array
   -- comparisons (n = any(...)) never see NULL.
   v_blessed := coalesce(p_numeros_bendecidos, array[]::integer[]);
+
+  -- crear_rifa() inserts these as-is and the raffle page renders them
+  -- publicly, so bound them here (limits mirror lib/onboarding/validate.ts).
+  if cardinality(v_blessed) > 50 then
+    raise exception 'Demasiados números bendecidos';
+  end if;
+
+  if exists (
+    select 1 from unnest(v_blessed) as b(n)
+    where b.n is null or b.n < 0 or b.n > p_max_numero
+  ) then
+    raise exception 'Número bendecido inválido';
+  end if;
+
+  if p_nequi_numero is null or p_nequi_numero !~ '^[0-9]{10}$' then
+    raise exception 'Número Nequi inválido';
+  end if;
+
+  if p_nequi_nombre is null or length(trim(p_nequi_nombre)) < 1 or length(trim(p_nequi_nombre)) > 80 then
+    raise exception 'Nombre Nequi inválido';
+  end if;
+
+  if p_sorteo_fecha is null or length(trim(p_sorteo_fecha)) < 1 or length(trim(p_sorteo_fecha)) > 40 then
+    raise exception 'Fecha de sorteo inválida';
+  end if;
 
   select o.organization_id into v_org_id from crear_organizacion(p_nombre, p_subdomain) o;
 

@@ -163,7 +163,21 @@ describe("crear_organizacion_con_rifa", () => {
 
   it.each([
     ["empty organization name", { p_nombre: "   " }],
-    ["organization name over 80 chars", { p_nombre: "x".repeat(81) }],
+    ["organization name over 60 chars", { p_nombre: "x".repeat(61) }],
+    ["blessed numbers over 50 entries", { p_numeros_bendecidos: Array.from({ length: 51 }, (_, i) => i) }],
+    ["blessed number above max_numero", { p_numeros_bendecidos: [7, 100] }],
+    ["negative blessed number", { p_numeros_bendecidos: [-1] }],
+    ["NULL blessed element", { p_numeros_bendecidos: [7, null] }],
+    ["non-digit nequi number", { p_nequi_numero: "30000000ab" }],
+    ["short nequi number", { p_nequi_numero: "300000000" }],
+    ["long nequi number", { p_nequi_numero: "30000000000" }],
+    ["null nequi number", { p_nequi_numero: null }],
+    ["oversized nequi name", { p_nequi_nombre: "x".repeat(81) }],
+    ["blank nequi name", { p_nequi_nombre: "   " }],
+    ["null nequi name", { p_nequi_nombre: null }],
+    ["oversized sorteo_fecha", { p_sorteo_fecha: "x".repeat(41) }],
+    ["blank sorteo_fecha", { p_sorteo_fecha: "  " }],
+    ["null sorteo_fecha", { p_sorteo_fecha: null }],
     ["null organization name", { p_nombre: null }],
     ["empty raffle name", { p_raffle_nombre: "" }],
     ["raffle name over 80 chars", { p_raffle_nombre: "x".repeat(81) }],
@@ -194,6 +208,24 @@ describe("crear_organizacion_con_rifa", () => {
     expect(org).toBeNull();
     const { data: members } = await admin.from("organization_members").select("id").eq("user_id", user.userId);
     expect(members).toEqual([]);
+  });
+
+  it("accepts every boundary value at once (60-char org, 50 blessed incl. 0 and max, 80-char nequi name, 40-char date)", async () => {
+    const user = await createAuthedUser("onb-bound");
+    createdUserIds.push(user.userId);
+
+    const { error } = await user.client.rpc(
+      "crear_organizacion_con_rifa",
+      args(sub("onb-bound"), {
+        p_nombre: "x".repeat(60),
+        p_max_numero: 99,
+        p_numeros_bendecidos: [0, 99, ...Array.from({ length: 48 }, (_, i) => i + 1)],
+        p_nequi_numero: "3123456789",
+        p_nequi_nombre: "n".repeat(80),
+        p_sorteo_fecha: "d".repeat(40),
+      })
+    );
+    expect(error).toBeNull();
   });
 
   it("treats NULL p_numeros_bendecidos as an empty list", async () => {
