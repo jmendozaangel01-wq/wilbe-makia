@@ -1,6 +1,9 @@
 import { DEFAULT_APEX_DOMAIN } from "../tenant/subdomain";
 
 const DEFAULT_NEXT = "/admin";
+// Control characters (incl. tab/LF/CR, which URL parsers silently strip) and backslashes.
+const UNSAFE_CHARS = /[\u0000-\u001f\u007f\\]/;
+const PROBE_ORIGIN = "http://x";
 
 /**
  * Sanitizes the `next` redirect target carried through the OAuth round trip.
@@ -9,7 +12,17 @@ const DEFAULT_NEXT = "/admin";
  * back to /admin so the callback can never be turned into an open redirect.
  */
 export function safeNextPath(next: string | null | undefined): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) {
+  if (!next || !next.startsWith("/") || next.startsWith("//") || UNSAFE_CHARS.test(next)) {
+    return DEFAULT_NEXT;
+  }
+  // WHATWG URL parsing strips tab/LF/CR and normalizes backslashes, so a
+  // string that looks like a path can still resolve cross-origin. Confirm
+  // by resolving it against a dummy origin.
+  try {
+    if (new URL(next, PROBE_ORIGIN).origin !== PROBE_ORIGIN) {
+      return DEFAULT_NEXT;
+    }
+  } catch {
     return DEFAULT_NEXT;
   }
   return next;

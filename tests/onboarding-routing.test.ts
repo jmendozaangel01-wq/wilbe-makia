@@ -7,7 +7,7 @@ describe("safeNextPath", () => {
     expect(safeNextPath("/onboarding?x=1")).toBe("/onboarding?x=1");
   });
 
-  it.each([null, undefined, "", "admin", "//evil.com", "/\\evil.com", "https://evil.com", "javascript:alert(1)"])(
+  it.each([null, undefined, "", "admin", "//evil.com", "/\\evil.com", "https://evil.com", "javascript:alert(1)", "/\t/evil.com", "/\n/evil.com", "/\r/evil.com", "/\u0000/evil.com", "/ok\tpath", "/a\\b"])(
     "falls back to /admin for unsafe value %j",
     (v) => {
       expect(safeNextPath(v as string | null | undefined)).toBe("/admin");

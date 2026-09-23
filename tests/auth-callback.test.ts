@@ -1,7 +1,8 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createAuthedUser, deleteTestUser } from "./helpers/auth";
+import { cleanupOrg, createTestOrg } from "./helpers/fixtures";
 
 // OAuth callback route (Phase 5): exchanges the Google auth code for a
 // session, then routes by membership. The Supabase SSR client is faked so
@@ -30,7 +31,12 @@ vi.mock("@/lib/supabase/server", () => ({
 const { GET } = await import("../app/auth/callback/route");
 
 const userIds: string[] = [];
+const orgIds: string[] = [];
+const admin = createClient(process.env.TEST_SUPABASE_URL!, process.env.TEST_SUPABASE_SERVICE_ROLE_KEY!, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 afterAll(async () => {
+  for (const id of orgIds) await cleanupOrg(admin, id);
   for (const id of userIds) await deleteTestUser(id);
 });
 
@@ -73,5 +79,26 @@ describe("GET /auth/callback", () => {
     const res = await GET(callbackRequest("?code=good-code&next=//evil.example"));
     const location = new URL(res.headers.get("location")!);
     expect(location.host).toBe("rifamakia.com");
+  });
+
+  it.each([
+    ["tab", "%2F%09%2Fevil.example"],
+    ["line feed", "%2F%0A%2Fevil.example"],
+    ["carriage return", "%2F%0D%2Fevil.example"],
+    ["encoded backslash", "%2F%5Cevil.example"],
+  ])("never redirects off-origin via a control-char next (%s)", async (_label, encoded) => {
+    // Member on their own tenant host, so `next` is actually honoured.
+    const user = await createAuthedUser("cb-ctl");
+    userIds.push(user.userId);
+    const org = await createTestOrg(admin, "cb-ctl");
+    orgIds.push(org.id);
+    await admin.from("organization_members").insert({ organization_id: org.id, user_id: user.userId, role: "owner" });
+    mockState.memberClient = user.client;
+
+    const host = `${org.subdomain}.rifamakia.com`;
+    const req = new NextRequest(`http://${host}/auth/callback?code=good-code&next=${encoded}`, { headers: { host } });
+    const res = await GET(req);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.host).toBe(host);
   });
 });
