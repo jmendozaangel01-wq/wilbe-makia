@@ -9,6 +9,7 @@ export const LOGIN_ERROR_MESSAGES = {
   lookup_failed: "No pudimos verificar tu acceso. Intenta de nuevo.",
   oauth_missing_code: "No recibimos el código de autorización de Google.",
   oauth_failed: "No pudimos iniciar tu sesión. Intenta de nuevo.",
+  link_invalid: "El enlace venció o ya no es válido. Solicita uno nuevo.",
 } as const;
 
 export type LoginErrorCode = keyof typeof LOGIN_ERROR_MESSAGES;
