@@ -4,24 +4,29 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { NEQUI_NOMBRE, NEQUI_NUMERO, formatCOP, type PaqueteTipo } from "@/lib/constants";
 import type { ReservationState } from "@/app/actions";
+import type { DemoReservationState } from "@/lib/demo/simulate-reservation";
+import DemoNotice from "@/components/rifa/DemoNotice";
 
 interface ReservationFormProps {
   selection: { qty: number; price: number; tipo: PaqueteTipo };
-  state: ReservationState;
+  state: ReservationState | DemoReservationState;
   formAction: (formData: FormData) => void;
   isPending: boolean;
+  /** Landing-page simulation: adds demo notices and the sign-up CTA. Off for tenants. */
+  demo?: boolean;
 }
 
 const inputClass =
   "w-full bg-charcoal border border-border text-white text-[15px] px-4 py-3 rounded placeholder:text-gray focus:outline-none focus:border-gold transition";
 
-export default function ReservationForm({ selection, state, formAction, isPending }: ReservationFormProps) {
+export default function ReservationForm({ selection, state, formAction, isPending, demo = false }: ReservationFormProps) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [showComprobanteWarning, setShowComprobanteWarning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (state.status === "success") {
+    const sampleNumbers = "sampleNumbers" in state ? state.sampleNumbers : [];
     return (
       <div className="max-w-[480px] mx-auto text-center py-10">
         <div className="w-[70px] h-[70px] rounded-full bg-gold flex items-center justify-center mx-auto mb-6 text-[32px] text-charcoal">
@@ -35,6 +40,29 @@ export default function ReservationForm({ selection, state, formAction, isPendin
         <p className="text-gray/70 text-sm mt-4">
           Si no ves el correo en un rato, revisa la carpeta de spam o promociones.
         </p>
+        {demo && (
+          <div className="mt-8">
+            {sampleNumbers.length > 0 && (
+              <div className="mb-6">
+                <div className="text-[13px] tracking-[1.5px] text-gray uppercase">Ejemplo de tus números</div>
+                <div className="mt-2 flex flex-wrap justify-center gap-2">
+                  {sampleNumbers.map((n) => (
+                    <span key={n} className="rounded border border-gold/60 px-3 py-1 font-display text-lg text-gold">
+                      {n}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <DemoNotice detail="Los números son de ejemplo y no se envió ningún correo." />
+            <a
+              href="/auth/registro"
+              className="mt-6 inline-block rounded bg-red px-7 py-4 text-base font-extrabold text-white transition hover:brightness-110"
+            >
+              Crea tu propia rifa gratis
+            </a>
+          </div>
+        )}
       </div>
     );
   }
@@ -90,6 +118,13 @@ export default function ReservationForm({ selection, state, formAction, isPendin
           Te los revelamos al confirmar tu pago
         </div>
       </div>
+
+      {demo && (
+        <DemoNotice
+          className="mb-6"
+          detail="No realices ningún pago ni uses datos reales: nada de lo que escribas se envía ni se guarda."
+        />
+      )}
 
       <form
         // remount to clear the file picker/dropzone state when the user switches packages

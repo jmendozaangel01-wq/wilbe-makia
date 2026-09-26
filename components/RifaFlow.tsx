@@ -6,6 +6,8 @@ import { MIN_CUSTOM_QTY, PAQUETES, PRICE_PER_NUMBER, clampCustomQty, type Paquet
 import PackageCard from "@/components/rifa/PackageCard";
 import CustomQtyPicker from "@/components/rifa/CustomQtyPicker";
 import ReservationForm from "@/components/rifa/ReservationForm";
+import DemoNotice from "@/components/rifa/DemoNotice";
+import { pickReservationAction } from "@/lib/demo/simulate-reservation";
 
 interface Selection {
   qty: number;
@@ -15,10 +17,19 @@ interface Selection {
 
 const initialState: ReservationState = { status: "idle" };
 
-export default function RifaFlow() {
+interface RifaFlowProps {
+  /**
+   * Marketing-landing simulation: swaps the real server action for a local
+   * fake, so nothing is saved, uploaded or emailed. Defaults to false, which
+   * keeps tenant hosts on the real submitReservation.
+   */
+  demo?: boolean;
+}
+
+export default function RifaFlow({ demo = false }: RifaFlowProps) {
   const [selection, setSelection] = useState<Selection | null>(null);
   const [customQty, setCustomQty] = useState(MIN_CUSTOM_QTY);
-  const [state, formAction, isPending] = useActionState(submitReservation, initialState);
+  const [state, formAction, isPending] = useActionState(pickReservationAction(demo, submitReservation), initialState);
 
   function scrollToReserva() {
     document.getElementById("reserva")?.scrollIntoView({ behavior: "smooth" });
@@ -46,6 +57,7 @@ export default function RifaFlow() {
         <div className="text-center mb-12">
           <h2 className="font-display text-[40px] tracking-wide">ELIGE TU PAQUETE</h2>
           <p className="text-gray mt-2.5">Más números, más chances de ganar.</p>
+          {demo && <DemoNotice className="mt-5" />}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-[1000px] mx-auto mb-7">
@@ -64,6 +76,7 @@ export default function RifaFlow() {
             state={state}
             formAction={formAction}
             isPending={isPending}
+            demo={demo}
           />
         </div>
       )}

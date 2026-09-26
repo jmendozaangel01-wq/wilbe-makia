@@ -108,8 +108,9 @@ export default async function Home() {
 
   if (selectHomeView(host) === "marketing") {
     // Apex: marketing sections around the SAME raffle components a tenant
-    // sees, fed by the same tenant-zero resolution above, so the demo's
-    // reservations are real.
+    // sees, fed by the same tenant-zero resolution above (read-only). The flow
+    // runs in `demo` mode: reservations are simulated client-side and never
+    // reach submitReservation.
     return (
       <div className="mk font-body bg-charcoal text-cream min-h-screen overflow-x-hidden flex flex-col flex-1">
         <MarketingHeader />
@@ -121,7 +122,7 @@ export default async function Home() {
           <div className="bg-charcoal">
             <Hero orgName={orgName} logoUrl={logoUrl} headingAs="h2" />
             <BlessedNumbers initialTaken={initialTaken} orgId={org?.id ?? null} />
-            <RifaFlow />
+            <RifaFlow demo />
           </div>
         </main>
         <MarketingFooter />
