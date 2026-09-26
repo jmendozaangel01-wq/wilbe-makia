@@ -1,80 +1,130 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { mapAuthError } from "@/lib/auth/auth-errors";
+import { shouldRevealPassword, validateSignInInput, type AuthField } from "@/lib/auth/validation";
+import AuthShell from "@/components/auth/AuthShell";
+import FormAlert from "@/components/auth/FormAlert";
+import GoogleButton from "@/components/auth/GoogleButton";
+import OrDivider from "@/components/auth/OrDivider";
+import PasswordField from "@/components/auth/PasswordField";
+import TextField from "@/components/auth/TextField";
+import { LINK, PRIMARY_BUTTON } from "@/components/auth/styles";
 
 interface LoginFormProps {
-  /** Organization display name (design tenant-branding domain), resolved
-   * server-side by app/admin/login/page.tsx -- this component is a client
-   * component and cannot resolve the tenant itself. */
-  orgName: string;
-  /** Message forwarded by /auth/callback when the Google sign-in failed. */
+  /** Prefills the email (also makes the password field visible when valid). */
+  initialEmail?: string;
+  /** Fixed message forwarded by /auth/callback or the admin guard (allowlisted upstream). */
   initialError?: string | null;
 }
 
-export default function LoginForm({ orgName, initialError = null }: LoginFormProps) {
+export default function LoginForm({ initialEmail = "", initialError = null }: LoginFormProps) {
+  const [email, setEmail] = useState(initialEmail);
+  const [password, setPassword] = useState("");
+  // Sticky: once the password field appears it stays, so editing the email
+  // afterwards does not make it flicker away.
+  const [revealed, setRevealed] = useState(() => shouldRevealPassword(initialEmail));
+  const [fieldError, setFieldError] = useState<{ field: AuthField; message: string } | null>(null);
   const [error, setError] = useState<string | null>(initialError);
   const [pending, setPending] = useState(false);
 
-  async function onGoogleSignIn() {
-    setPending(true);
+  function onEmailChange(value: string) {
+    setEmail(value);
+    if (!revealed && shouldRevealPassword(value)) setRevealed(true);
+    if (fieldError?.field === "email") setFieldError(null);
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pending) return;
     setError(null);
 
-    // PKCE: the code verifier cookie is set on THIS host, so the callback
-    // must return to the same origin -- hence window.location.origin instead
-    // of a fixed URL. Each tenant host (or a wildcard) must be in Supabase's
-    // redirect allow-list.
-    const supabase = createClient();
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
-
-    if (oauthError) {
-      setError(oauthError.message);
-      setPending(false);
+    const invalid = validateSignInInput({ email, password });
+    if (invalid) {
+      setFieldError(invalid);
+      // An empty password with a valid email means the field is showing; an
+      // invalid email never reaches here with the field required.
+      return;
     }
+    setFieldError(null);
+    setPending(true);
+
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+
+    if (signInError) {
+      setError(mapAuthError(signInError, "sign-in"));
+      setPending(false);
+      return;
+    }
+
+    // Full navigation so the fresh session cookie is sent; /admin decides
+    // (tenant admin, other tenant, or /onboarding for users with no org).
+    window.location.assign("/admin");
   }
 
   return (
-    <div
-      style={{
-        background: "white",
-        border: "1px solid oklch(0.90 0.005 40)",
-        borderRadius: "10px",
-        padding: "clamp(20px, 6vw, 32px)",
-        width: "100%",
-        maxWidth: "360px",
-        display: "flex",
-        flexDirection: "column",
-        gap: "16px",
-      }}
+    <AuthShell
+      title="Inicia sesión en Bendita Rifa"
+      subtitle={
+        <>
+          ¿No tienes cuenta?{" "}
+          <Link href="/auth/registro" className={LINK}>
+            Regístrate
+          </Link>
+          .
+        </>
+      }
+      legal
     >
-      <div className="font-display" style={{ fontSize: "18px", letterSpacing: "1px" }}>
-        {orgName} <span style={{ color: "var(--color-gold)" }}>ADMIN</span>
+      <div className="space-y-5">
+        <GoogleButton onStart={() => setError(null)} onError={setError} disabled={pending} />
+        <OrDivider />
+
+        <form onSubmit={onSubmit} noValidate className="space-y-4">
+          <TextField
+            id="login-email"
+            label="Correo electrónico"
+            type="email"
+            name="email"
+            autoComplete="email"
+            inputMode="email"
+            placeholder="tu@correo.com"
+            value={email}
+            onChange={onEmailChange}
+            error={fieldError?.field === "email" ? fieldError.message : null}
+          />
+
+          {revealed ? (
+            <div className="auth-reveal">
+              <PasswordField
+                id="login-password"
+                label="Contraseña"
+                autoComplete="current-password"
+                value={password}
+                onChange={(value) => {
+                  setPassword(value);
+                  if (fieldError?.field === "password") setFieldError(null);
+                }}
+                error={fieldError?.field === "password" ? fieldError.message : null}
+                labelAction={
+                  <Link href="/auth/olvide" className={`${LINK} text-xs`}>
+                    ¿Olvidaste tu contraseña?
+                  </Link>
+                }
+              />
+            </div>
+          ) : null}
+
+          <FormAlert message={error} />
+
+          <button type="submit" disabled={pending} className={PRIMARY_BUTTON}>
+            {pending ? "Iniciando sesión..." : "Iniciar sesión"}
+          </button>
+        </form>
       </div>
-
-      <button
-        type="button"
-        onClick={onGoogleSignIn}
-        disabled={pending}
-        style={{
-          background: "white",
-          color: "oklch(0.20 0.01 40)",
-          border: "1px solid oklch(0.75 0.005 40)",
-          fontWeight: 600,
-          fontSize: "14px",
-          minHeight: "44px",
-          padding: "12px",
-          borderRadius: "6px",
-          cursor: pending ? "not-allowed" : "pointer",
-          opacity: pending ? 0.7 : 1,
-        }}
-      >
-        Continuar con Google
-      </button>
-
-      {error && <div style={{ color: "oklch(0.52 0.21 26)", fontSize: "13px", fontWeight: 600 }}>{error}</div>}
-    </div>
+    </AuthShell>
   );
 }

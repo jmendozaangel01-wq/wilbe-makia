@@ -1,0 +1,100 @@
+/*
+ * Auth screens: warm stage glow, the ticket card and its perforation.
+ * Kept out of globals.css on purpose so it cannot collide with other
+ * branches that also extend the global stylesheet.
+ */
+.auth-stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--color-charcoal);
+}
+
+.auth-stage::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -20% -10% auto -10%;
+  height: 80%;
+  background:
+    radial-gradient(45% 55% at 50% 0%, oklch(0.52 0.21 26 / 0.34), transparent 70%),
+    radial-gradient(30% 35% at 78% 8%, oklch(0.8 0.14 85 / 0.14), transparent 70%);
+  pointer-events: none;
+}
+
+/* Ticket: two side notches sit on the perforation that separates the
+   header (what this screen is) from the form (what to do). */
+.auth-ticket {
+  position: relative;
+  background: var(--color-charcoal-card);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 30px 60px oklch(0 0 0 / 0.45);
+}
+
+.auth-perforation {
+  position: relative;
+  height: 0;
+  border-top: 2px dashed var(--color-border);
+  margin-inline: 22px;
+}
+
+.auth-perforation::before,
+.auth-perforation::after {
+  content: "";
+  position: absolute;
+  top: -12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: var(--color-charcoal);
+  border: 1px solid var(--color-border);
+}
+
+.auth-perforation::before {
+  left: -34px;
+  clip-path: inset(0 0 0 50%);
+}
+
+.auth-perforation::after {
+  right: -34px;
+  clip-path: inset(0 50% 0 0);
+}
+
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.auth-enter {
+  animation: auth-rise 0.45s ease-out both;
+}
+
+/* Password field revealing under the email field. */
+@keyframes auth-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.auth-reveal {
+  animation: auth-reveal 0.3s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-enter,
+  .auth-reveal {
+    animation: none;
+  }
+}

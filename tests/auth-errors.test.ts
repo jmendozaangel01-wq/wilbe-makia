@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapAuthError, GENERIC_AUTH_ERROR } from "../lib/auth/auth-errors";
+import { mapAuthError, resetRequestErrorMessage, GENERIC_AUTH_ERROR } from "../lib/auth/auth-errors";
 
 describe("mapAuthError", () => {
   it("maps known Supabase error codes to fixed Spanish messages", () => {
@@ -42,5 +42,15 @@ describe("mapAuthError", () => {
   it("uses a fixed message for expired or invalid recovery sessions", () => {
     expect(mapAuthError({ code: "session_not_found" }, "reset")).toMatch(/enlace/);
     expect(mapAuthError({ code: "reauthentication_needed" }, "reset")).toMatch(/enlace/);
+  });
+});
+
+describe("resetRequestErrorMessage", () => {
+  it("surfaces only rate limiting; every other outcome must look like success", () => {
+    expect(resetRequestErrorMessage({ code: "over_email_send_rate_limit" })).toMatch(/Demasiados intentos/);
+    expect(resetRequestErrorMessage({ code: "user_not_found" })).toBeNull();
+    expect(resetRequestErrorMessage({ code: "email_address_invalid" })).toBeNull();
+    expect(resetRequestErrorMessage({ message: "boom" })).toBeNull();
+    expect(resetRequestErrorMessage(null)).toBeNull();
   });
 });

@@ -47,3 +47,13 @@ export function mapAuthError(error: { code?: string; message?: string } | null |
   if (Object.hasOwn(COMMON, code)) return COMMON[code];
   return GENERIC_AUTH_ERROR;
 }
+
+/**
+ * Password-reset requests must look identical whether or not the account
+ * exists, so the only failure worth showing is rate limiting (which says
+ * nothing about the address). Everything else returns null = show success.
+ */
+export function resetRequestErrorMessage(error: { code?: string; message?: string } | null | undefined): string | null {
+  const code = error?.code;
+  return typeof code === "string" && Object.hasOwn(COMMON, code) ? COMMON[code] : null;
+}
