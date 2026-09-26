@@ -45,7 +45,7 @@ export default function AuthShell({ title, subtitle, children, legal = false }: 
 
         <section className="auth-ticket" aria-labelledby="auth-title">
           <header className="px-6 pb-6 pt-7 text-center sm:px-8">
-            <h1 id="auth-title" className="font-display text-[28px] leading-tight tracking-wide text-cream">
+            <h1 id="auth-title" className="font-display text-balance text-[28px] leading-tight tracking-wide text-cream">
               {title}
             </h1>
             {subtitle ? <p className="mt-2 text-sm leading-relaxed text-gray">{subtitle}</p> : null}
