@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
-import { LOGIN_HREF, TRIAL_LABEL } from "./MarketingHeader";
+import { SIGNUP_HREF, TRIAL_LABEL } from "./MarketingHeader";
 
 const SAMPLE_NUMBER = "07734";
 const STRIP = "01234567890123456789".split("");
@@ -101,7 +101,7 @@ export default function LandingHero() {
 
           <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
             <Link
-              href={LOGIN_HREF}
+              href={SIGNUP_HREF}
               className="inline-flex items-center justify-center rounded-sm bg-gold px-8 py-4 text-base font-extrabold text-charcoal! shadow-[0_10px_30px_oklch(0.80_0.14_85_/_0.28)] transition hover:bg-gold-light hover:text-charcoal!"
             >
               {TRIAL_LABEL}
@@ -113,7 +113,7 @@ export default function LandingHero() {
               Mira una rifa en vivo
             </a>
           </div>
-          <p className="mt-4 text-sm text-gray">Entra con tu cuenta de Google y empieza en un par de pasos.</p>
+          <p className="mt-4 text-sm text-gray">Regístrate con tu correo o con Google y empieza en un par de pasos.</p>
         </div>
 
         <Ticket />

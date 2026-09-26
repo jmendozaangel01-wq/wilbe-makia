@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 export const LOGIN_HREF = "/admin/login";
+export const SIGNUP_HREF = "/auth/registro";
 export const TRIAL_LABEL = "Prueba gratis 14 días";
 
 export default function MarketingHeader() {
@@ -22,7 +23,7 @@ export default function MarketingHeader() {
             Iniciar sesión
           </Link>
           <Link
-            href={LOGIN_HREF}
+            href={SIGNUP_HREF}
             className="whitespace-nowrap rounded-sm bg-gold px-3.5 py-2.5 text-[13px] font-extrabold text-charcoal! transition hover:bg-gold-light hover:text-charcoal! sm:px-5 sm:text-sm"
           >
             <span className="sm:hidden">Prueba gratis</span>

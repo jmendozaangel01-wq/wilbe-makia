@@ -1,7 +1,7 @@
 const STEPS = [
   {
     title: "Crea tu rifa",
-    body: "Entra con Google y llena dos pasos: el nombre de tu organización con su enlace, y los datos de tu rifa (precio, fecha del sorteo y tu Nequi).",
+    body: "Regístrate con tu correo o con Google y llena dos pasos: el nombre de tu organización con su enlace, y los datos de tu rifa (precio, fecha del sorteo y tu Nequi).",
   },
   {
     title: "Comparte tu enlace",

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LOGIN_HREF, TRIAL_LABEL } from "./MarketingHeader";
+import { LOGIN_HREF, SIGNUP_HREF, TRIAL_LABEL } from "./MarketingHeader";
 
 export default function MarketingFooter() {
   return (
@@ -10,7 +10,7 @@ export default function MarketingFooter() {
             ¿LISTO PARA LANZAR TU RIFA?
           </h2>
           <Link
-            href={LOGIN_HREF}
+            href={SIGNUP_HREF}
             className="inline-flex items-center justify-center rounded-sm bg-charcoal px-8 py-4 text-base font-extrabold text-gold! transition hover:bg-charcoal-soft hover:text-gold-light!"
           >
             {TRIAL_LABEL}
