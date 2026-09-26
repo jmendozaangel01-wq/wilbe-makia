@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendComprobanteRecibidoEmail } from "@/lib/email";
 import { resolveOrganizationByHost } from "@/lib/tenant/resolve";
+import { selectHomeView } from "@/lib/tenant/home-view";
 import { MAX_CUSTOM_QTY, MIN_CUSTOM_QTY, PAQUETES, type PaqueteTipo } from "@/lib/constants";
 
 export type ReservationState =
@@ -26,7 +27,10 @@ const MAX_COMPROBANTE_BYTES = 8 * 1024 * 1024;
 const GENERIC_ERROR_MESSAGE =
   "Hubo un problema al procesar tu reserva. Por favor intenta de nuevo en unos minutos.";
 
-const INVALID_IMAGE_MESSAGE = "El comprobante debe ser una imagen.";
+const MARKETING_HOST_MESSAGE =
+  "Esta es una demo: no se pueden hacer reservas reales aquí. Entra a la página de una rifa para comprar.";
+
+const INVALID_IMAGE_MESSAGE ="El comprobante debe ser una imagen.";
 
 /**
  * Inspects the first bytes of a file for known image format signatures.
@@ -104,6 +108,15 @@ export async function submitReservation(
   try {
     const headerList = await headers();
     const host = headerList.get("host");
+
+    // The apex / www / preview / localhost hosts only serve the marketing
+    // landing, whose raffle is a client-side simulation. Real reservations
+    // exist only on tenant hosts, so refuse here -- before any DB read/write,
+    // upload or email -- even if someone POSTs this action by hand.
+    if (selectHomeView(host) === "marketing") {
+      return { status: "error", error: MARKETING_HOST_MESSAGE };
+    }
+
     const org = host ? await resolveOrganizationByHost(host) : null;
 
     if (!org) {
