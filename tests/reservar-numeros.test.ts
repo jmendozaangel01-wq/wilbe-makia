@@ -1,6 +1,10 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+// Legacy single-tenant reservar_numeros tests were retired with 0014
+// (superseded by reservar_numeros_rifa, covered by tenant-isolation and
+// raffle-* tests). What remains covers functions kept by 0014.
+//
 // These tests run against a REAL local Postgres started via
 // `npx supabase start` (see README.md). They are NOT unit tests and will
 // not pass without the local Docker stack running. A JS-based Postgres
@@ -23,15 +27,6 @@ beforeAll(() => {
   });
 });
 
-interface ReservarNumerosRow {
-  reserva_id: string;
-  numeros_asignados: number[];
-}
-
-function randomQty(min = 3, max = 8) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 function dummyContact(tag: string) {
   return {
     p_nombre: "Test",
@@ -43,132 +38,6 @@ function dummyContact(tag: string) {
     p_paquete_tipo: "custom",
   };
 }
-
-describe("reservar_numeros concurrency", () => {
-  const CONCURRENT_CALLS = 50;
-  let successfulRows: ReservarNumerosRow[] = [];
-
-  beforeAll(async () => {
-    const calls = Array.from({ length: CONCURRENT_CALLS }, (_, i) => {
-      const contact = dummyContact(`concurrency-${i}`);
-      return admin.rpc("reservar_numeros", {
-        p_cantidad: randomQty(),
-        ...contact,
-      });
-    });
-
-    const results = await Promise.allSettled(calls);
-
-    successfulRows = results
-      .filter(
-        (r): r is PromiseFulfilledResult<{ data: ReservarNumerosRow[] | null; error: unknown }> =>
-          r.status === "fulfilled" && r.value.error == null && r.value.data != null
-      )
-      .flatMap((r) => r.value.data as ReservarNumerosRow[]);
-  });
-
-  it("assigns every raffle number to at most one reservation under concurrent load", () => {
-    const allNumbers = successfulRows.flatMap((row) => row.numeros_asignados);
-    const uniqueNumbers = new Set(allNumbers);
-
-    expect(allNumbers.length).toBeGreaterThan(0);
-    expect(uniqueNumbers.size).toBe(allNumbers.length);
-  });
-
-  it("succeeds for (roughly) all concurrent callers, since 100,000 numbers are available", () => {
-    // With 100,000 numbers and each call taking at most 8, all 50 concurrent
-    // calls should succeed — none should be starved out.
-    expect(successfulRows.length).toBe(CONCURRENT_CALLS);
-  });
-});
-
-describe("reservar_numeros exhaustion", () => {
-  it("rejects a request for more numbers than remain, atomically (no partial reservation)", async () => {
-    // reservar_numeros caps p_cantidad at 200 (see 0001_init.sql), so we
-    // can't prove "not enough available numbers" just by asking for more
-    // than the ~100,000-number pool. Instead, drain the pool down to a
-    // handful of available numbers directly (service role bypasses RLS),
-    // then request more than that handful while staying under the 200 cap.
-    const KEEP_AVAILABLE = 5;
-
-    const { data: toKeep, error: toKeepError } = await admin
-      .from("numeros")
-      .select("numero")
-      .eq("estado", "disponible")
-      .order("numero")
-      .limit(KEEP_AVAILABLE);
-
-    expect(toKeepError).toBeNull();
-    const keepNumbers = (toKeep as { numero: number }[]).map((r) => r.numero);
-    expect(keepNumbers.length).toBe(KEEP_AVAILABLE);
-
-    const { error: drainError } = await admin
-      .from("numeros")
-      .update({ estado: "vendido" })
-      .eq("estado", "disponible");
-
-    expect(drainError).toBeNull();
-
-    const { error: restoreError } = await admin
-      .from("numeros")
-      .update({ estado: "disponible" })
-      .in("numero", keepNumbers);
-
-    expect(restoreError).toBeNull();
-
-    const { count, error: countError } = await admin
-      .from("numeros")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "disponible");
-
-    expect(countError).toBeNull();
-    expect(count).toBe(KEEP_AVAILABLE);
-
-    const requestTooMany = KEEP_AVAILABLE + 5; // > remaining, still <= 200 cap
-    const contact = dummyContact("exhaustion");
-
-    const { data, error } = await admin.rpc("reservar_numeros", {
-      p_cantidad: requestTooMany,
-      ...contact,
-    });
-
-    expect(error).not.toBeNull();
-    expect(error?.message).toContain("No hay suficientes números disponibles");
-    expect(data).toBeNull();
-
-    // Confirm the SQL function is atomic: no orphaned partial reservation
-    // was left behind for this failed call.
-    const { data: orphaned, error: orphanedError } = await admin
-      .from("reservas")
-      .select("id")
-      .eq("correo", contact.p_correo);
-
-    expect(orphanedError).toBeNull();
-    expect(orphaned).toEqual([]);
-
-    // And none of the still-available numbers were partially consumed.
-    const { count: countAfter, error: countAfterError } = await admin
-      .from("numeros")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "disponible");
-
-    expect(countAfterError).toBeNull();
-    expect(countAfter).toBe(KEEP_AVAILABLE);
-
-    // Cleanup: restore the numbers we drained to 'vendido' back to
-    // 'disponible' so this test stays self-contained and re-runnable
-    // against the same local stack without needing `supabase db reset`
-    // between invocations. Nothing else in this schema ever sets
-    // estado='vendido', so every 'vendido' row at this point is one we
-    // created above.
-    const { error: cleanupError } = await admin
-      .from("numeros")
-      .update({ estado: "disponible" })
-      .eq("estado", "vendido");
-
-    expect(cleanupError).toBeNull();
-  });
-});
 
 describe("liberar_reservas_expiradas", () => {
   it("expires stale pending reservations and releases their numbers back to disponible", async () => {
@@ -244,18 +113,6 @@ describe("liberar_reservas_expiradas", () => {
 });
 
 describe("anon access control", () => {
-  it("denies anon calls to reservar_numeros (REVOKE EXECUTE regression test)", async () => {
-    const contact = dummyContact("anon-reservar");
-    const { data, error } = await anon.rpc("reservar_numeros", {
-      p_cantidad: 3,
-      ...contact,
-    });
-
-    expect(data).toBeNull();
-    expect(error).not.toBeNull();
-    expect(error?.message.toLowerCase()).toContain("permission denied");
-  });
-
   it("denies anon calls to marcar_en_verificacion (REVOKE EXECUTE regression test)", async () => {
     const { data, error } = await anon.rpc("marcar_en_verificacion", {
       p_reserva_id: "00000000-0000-0000-0000-000000000000",
@@ -265,40 +122,6 @@ describe("anon access control", () => {
     expect(data).toBeNull();
     expect(error).not.toBeNull();
     expect(error?.message.toLowerCase()).toContain("permission denied");
-  });
-});
-
-describe("random number assignment", () => {
-  it("does not always assign the lowest contiguous block of available numbers", async () => {
-    const contact = dummyContact("random-assignment");
-    const { data, error } = await admin.rpc("reservar_numeros", {
-      p_cantidad: 5,
-      ...contact,
-    });
-
-    expect(error).toBeNull();
-    expect(data).not.toBeNull();
-    const row = (data as ReservarNumerosRow[])[0];
-
-    // Sequential/lowest-first assignment would always produce [0, 1, 2, 3, 4]
-    // on a fresh DB. `order by random()` should not do that.
-    expect(row.numeros_asignados).not.toEqual([0, 1, 2, 3, 4]);
-
-    // Cleanup: release the numbers this test reserved so the suite stays
-    // rerunnable without requiring `supabase db reset` between invocations.
-    const { error: cleanupError } = await admin
-      .from("numeros")
-      .update({ estado: "disponible", reserva_id: null })
-      .in("numero", row.numeros_asignados);
-
-    expect(cleanupError).toBeNull();
-
-    const { error: reservaCleanupError } = await admin
-      .from("reservas")
-      .delete()
-      .eq("id", row.reserva_id);
-
-    expect(reservaCleanupError).toBeNull();
   });
 });
 
