@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 interface LoginFormProps {
@@ -14,9 +13,6 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({ orgName, initialError = null }: LoginFormProps) {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(initialError);
   const [pending, setPending] = useState(false);
 
@@ -40,27 +36,8 @@ export default function LoginForm({ orgName, initialError = null }: LoginFormPro
     }
   }
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    setPending(true);
-    setError(null);
-
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (signInError) {
-      setError(signInError.message);
-      setPending(false);
-      return;
-    }
-
-    router.push("/admin");
-    router.refresh();
-  }
-
   return (
-    <form
-      onSubmit={onSubmit}
+    <div
       style={{
         background: "white",
         border: "1px solid oklch(0.90 0.005 40)",
@@ -97,59 +74,7 @@ export default function LoginForm({ orgName, initialError = null }: LoginFormPro
         Continuar con Google
       </button>
 
-      <div style={{ fontSize: "12px", color: "oklch(0.45 0.01 40)", textAlign: "center" }}>o con correo y contraseña</div>
-
-      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "13px", fontWeight: 600 }}>
-        Correo
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={{
-            border: "1px solid oklch(0.85 0.005 40)",
-            borderRadius: "6px",
-            padding: "10px 12px",
-            fontSize: "14px",
-          }}
-        />
-      </label>
-
-      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "13px", fontWeight: 600 }}>
-        Contraseña
-        <input
-          type="password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{
-            border: "1px solid oklch(0.85 0.005 40)",
-            borderRadius: "6px",
-            padding: "10px 12px",
-            fontSize: "14px",
-          }}
-        />
-      </label>
-
       {error && <div style={{ color: "oklch(0.52 0.21 26)", fontSize: "13px", fontWeight: 600 }}>{error}</div>}
-
-      <button
-        type="submit"
-        disabled={pending}
-        style={{
-          background: "oklch(0.52 0.21 26)",
-          color: "white",
-          border: "none",
-          fontWeight: 700,
-          fontSize: "14px",
-          padding: "12px",
-          borderRadius: "6px",
-          cursor: pending ? "not-allowed" : "pointer",
-          opacity: pending ? 0.7 : 1,
-        }}
-      >
-        {pending ? "Ingresando…" : "Ingresar"}
-      </button>
-    </form>
+    </div>
   );
 }

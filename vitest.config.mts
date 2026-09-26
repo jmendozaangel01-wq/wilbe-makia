@@ -14,6 +14,9 @@ export default defineConfig({
       "@": dirname,
     },
   },
+  // tsconfig sets jsx: "preserve" for Next; Vitest needs its own transform to
+  // import .tsx components (tests/login-form.test.ts).
+  oxc: { jsx: { runtime: "automatic" } },
   test: {
     environment: "node",
     setupFiles: ["./tests/setup.ts"],
