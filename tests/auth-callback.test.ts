@@ -73,6 +73,44 @@ describe("GET /auth/callback", () => {
     expect(new URL(res.headers.get("location")!).pathname).toBe("/onboarding");
   });
 
+  it("sends a recovery link to the reset screen even for a user with no organization", async () => {
+    const user = await createAuthedUser("cb-recovery");
+    userIds.push(user.userId);
+    mockState.memberClient = user.client;
+
+    const res = await GET(callbackRequest("?code=good-code&next=%2Fauth%2Freset"));
+    const location = new URL(res.headers.get("location")!);
+    expect(location.host).toBe("benditarifa.com");
+    expect(location.pathname).toBe("/auth/reset");
+  });
+
+  it("does not skip membership routing for lookalike reset paths", async () => {
+    const user = await createAuthedUser("cb-lookalike");
+    userIds.push(user.userId);
+    mockState.memberClient = user.client;
+
+    const res = await GET(callbackRequest("?code=good-code&next=%2Fauth%2Freset%2F..%2F..%2Fadmin"));
+    expect(new URL(res.headers.get("location")!).pathname).toBe("/onboarding");
+  });
+
+  it("sends a failed recovery exchange to login with the expired-link message code", async () => {
+    mockState.exchangeError = { message: "otp expired" };
+    const res = await GET(callbackRequest("?code=stale&next=%2Fauth%2Freset"));
+    mockState.exchangeError = null;
+    const location = new URL(res.headers.get("location")!);
+    expect(location.pathname).toBe("/admin/login");
+    expect(location.searchParams.get("error")).toBe("link_invalid");
+  });
+
+  it("maps a Supabase error redirect (expired email link) to link_invalid without exchanging", async () => {
+    mockState.exchangeCalls.length = 0;
+    const res = await GET(callbackRequest("?error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid"));
+    const location = new URL(res.headers.get("location")!);
+    expect(location.searchParams.get("error")).toBe("link_invalid");
+    expect(location.search).not.toContain("Email");
+    expect(mockState.exchangeCalls).toEqual([]);
+  });
+
   it("never redirects off-origin via the next parameter", async () => {
     const user = await createAuthedUser("cb-next");
     userIds.push(user.userId);
