@@ -6,12 +6,12 @@ export default function DemoIntro() {
           MIRA UNA RIFA EN VIVO
         </h2>
         <p className="mx-auto mt-5 max-w-[56ch] text-[17px] leading-relaxed text-gray">
-          Esta es una rifa de ejemplo: así la ven tus compradores. Las reservas funcionan de verdad, así que
-          puedes recorrer todo el proceso de compra.
+          Esta es una rifa de ejemplo: así la ven tus compradores. Puedes recorrer todo el proceso de compra,
+          pero es una simulación y no se guarda ninguna reserva.
         </p>
         <div className="mx-auto mt-7 inline-flex items-center gap-2.5 rounded-sm border border-dashed border-gold/60 px-4 py-2 text-sm font-semibold text-gold">
           <span className="h-2 w-2 rounded-full bg-red animate-pulse-dot" aria-hidden="true" />
-          Ejemplo: rifa de una moto XTZ 660 0-km
+          Ejemplo ficticio: rifa de una moto 0 km
         </div>
       </div>
     </section>
