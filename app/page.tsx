@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import SiteNav from "@/components/SiteNav";
 import Hero from "@/components/Hero";
@@ -8,6 +9,43 @@ import { resolveOrganizationByHost, DEFAULT_ORG_NAME } from "@/lib/tenant/resolv
 import { isValidLogoUrl } from "@/lib/tenant/logo";
 import { formatNumero } from "@/lib/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { selectHomeView } from "@/lib/tenant/home-view";
+import MarketingHeader from "@/components/landing/MarketingHeader";
+import LandingHero from "@/components/landing/LandingHero";
+import HowItWorks from "@/components/landing/HowItWorks";
+import Features from "@/components/landing/Features";
+import DemoIntro from "@/components/landing/DemoIntro";
+import MarketingFooter from "@/components/landing/MarketingFooter";
+
+const MARKETING_TITLE = "Bendita Rifa — Crea y administra tu rifa online";
+const MARKETING_DESCRIPTION =
+  "Crea tu rifa en minutos con tu propio enlace, recibe pagos por Nequi y confirma los comprobantes desde un panel. Prueba gratis 14 días.";
+
+/**
+ * Apex-only SEO metadata. Tenant hosts return {} so they keep inheriting the
+ * root layout's metadata exactly as before.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const host = (await headers()).get("host");
+  if (selectHomeView(host) !== "marketing") {
+    return {};
+  }
+  return {
+    metadataBase: new URL("https://benditarifa.com"),
+    title: MARKETING_TITLE,
+    description: MARKETING_DESCRIPTION,
+    alternates: { canonical: "/" },
+    openGraph: {
+      type: "website",
+      url: "/",
+      siteName: "Bendita Rifa",
+      locale: "es_CO",
+      title: MARKETING_TITLE,
+      description: MARKETING_DESCRIPTION,
+    },
+    twitter: { card: "summary", title: MARKETING_TITLE, description: MARKETING_DESCRIPTION },
+  };
+}
 
 interface NumeroEstadoRow {
   numero: number;
@@ -67,6 +105,29 @@ export default async function Home() {
   const logoUrl = org?.logoUrl && isValidLogoUrl(org.logoUrl) ? org.logoUrl : null;
 
   const initialTaken = org ? await loadBlessedNumbersSnapshot(org.id) : [];
+
+  if (selectHomeView(host) === "marketing") {
+    // Apex: marketing sections around the SAME raffle components a tenant
+    // sees, fed by the same tenant-zero resolution above, so the demo's
+    // reservations are real.
+    return (
+      <div className="mk font-body bg-charcoal text-cream min-h-screen overflow-x-hidden flex flex-col flex-1">
+        <MarketingHeader />
+        <main>
+          <LandingHero />
+          <HowItWorks />
+          <Features />
+          <DemoIntro />
+          <div className="bg-charcoal">
+            <Hero orgName={orgName} logoUrl={logoUrl} headingAs="h2" />
+            <BlessedNumbers initialTaken={initialTaken} orgId={org?.id ?? null} />
+            <RifaFlow />
+          </div>
+        </main>
+        <MarketingFooter />
+      </div>
+    );
+  }
 
   return (
     <div className="font-body bg-charcoal text-cream min-h-screen overflow-x-hidden flex flex-col flex-1">

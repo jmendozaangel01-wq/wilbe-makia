@@ -99,3 +99,71 @@ button {
   background-repeat: no-repeat;
   animation: om-shine 2s linear infinite;
 }
+
+/* ---- Marketing landing (apex only) ---- */
+
+/* Visible keyboard focus for the landing; scoped so admin/tenant UI is untouched. */
+.mk a:focus-visible,
+.mk button:focus-visible {
+  outline: 2px solid var(--color-gold-light);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Perforated ticket edge: dashed line between the main body and the stub. */
+.ticket-perforation {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    oklch(0.15 0.014 40 / 0.45) 0 7px,
+    transparent 7px 14px
+  );
+}
+
+/* Slot-machine digit: a strip of 0-9 twice, scrolled to land on the target. */
+@keyframes mk-digit-roll {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(var(--to) * -1em));
+  }
+}
+
+.mk-digit-strip {
+  animation: mk-digit-roll 1.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes mk-stamp {
+  0% {
+    opacity: 0;
+    transform: rotate(-14deg) scale(1.8);
+  }
+  60% {
+    opacity: 1;
+    transform: rotate(-14deg) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-14deg) scale(1);
+  }
+}
+
+.mk-stamp {
+  animation: mk-stamp 0.45s ease-out 1.9s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-digit-strip {
+    animation: none;
+    transform: translateY(calc(var(--to) * -1em));
+  }
+  .mk-stamp {
+    animation: none;
+    opacity: 1;
+    transform: rotate(-14deg);
+  }
+  .animate-pulse-dot {
+    animation: none;
+  }
+}
