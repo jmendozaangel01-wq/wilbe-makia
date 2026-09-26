@@ -68,7 +68,7 @@ describe("demo path sources", () => {
 
   it.each(files)("%s never imports Supabase or runtime values from lib/constants", (file) => {
     const src = read(file);
-    expect(src).not.toMatch(/froms+["'][^"']*supabase/i);
+    expect(src).not.toMatch(/from\s+["'][^"']*supabase/i);
     expect(src).not.toMatch(/^import(?! type).*lib\/constants/m);
     for (const s of REAL_STRINGS) expect(src).not.toContain(s);
   });
