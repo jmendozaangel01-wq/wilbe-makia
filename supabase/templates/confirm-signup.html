@@ -1,0 +1,53 @@
+<!-- Supabase "Confirm sign up" template. Subject: Confirma tu cuenta en Bendita Rifa -->
+<!DOCTYPE html>
+<html lang="es">
+  <body style="margin:0;padding:0;background:#140a0a;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#140a0a;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#fbf4e6;border-radius:12px;overflow:hidden;">
+            <tr>
+              <td style="background:#c21f2b;padding:20px 28px;">
+                <span style="font-size:20px;font-weight:bold;letter-spacing:0.5px;color:#fbf4e6;">Bendita <span style="color:#e6b94a;">Rifa</span></span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px 28px 8px 28px;color:#2a1a14;">
+                <h1 style="margin:0 0 12px 0;font-size:24px;line-height:1.25;color:#2a1a14;">Confirma tu cuenta</h1>
+                <p style="margin:0 0 24px 0;font-size:16px;line-height:1.55;color:#4a362c;">
+                  Gracias por registrarte. Confirma tu correo para crear tu primera rifa y activar tus 14 días de prueba gratis.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:0 28px 24px 28px;">
+                <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#c21f2b;color:#fbf4e6;text-decoration:none;font-size:16px;font-weight:bold;padding:14px 32px;border-radius:8px;">
+                  Confirmar mi correo
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 28px 28px 28px;color:#6b554a;font-size:13px;line-height:1.55;">
+                <p style="margin:0 0 10px 0;">
+                  <strong>Importante:</strong> abre este enlace en el mismo navegador en el que te registraste.
+                </p>
+                <p style="margin:0 0 10px 0;">
+                  Si el botón no funciona, copia y pega esta dirección en tu navegador:<br />
+                  <span style="word-break:break-all;color:#c21f2b;">{{ .ConfirmationURL }}</span>
+                </p>
+                <p style="margin:0;">
+                  Si no creaste esta cuenta, puedes ignorar este correo con tranquilidad.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="border-top:2px dashed #e0cfae;padding:16px 28px;color:#8a7466;font-size:12px;">
+                Bendita Rifa · benditarifa.com
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

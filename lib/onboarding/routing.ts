@@ -28,6 +28,19 @@ export function safeNextPath(next: string | null | undefined): string {
   return next;
 }
 
+/** Screen where a recovery link lands so the user can set a new password. */
+export const PASSWORD_RESET_PATH = "/auth/reset";
+
+/**
+ * Exact-match allowlist of `next` values that skip membership routing in
+ * /auth/callback. A recovery session must reach the reset screen even for a
+ * user with no organization (who would otherwise be sent to /onboarding).
+ * Exact match only -- no query strings, prefixes or case folding.
+ */
+export function isPasswordResetNext(next: string | null | undefined): boolean {
+  return next === PASSWORD_RESET_PATH;
+}
+
 /**
  * Builds the absolute URL of a tenant's admin area (or another path on that
  * tenant's host) from the host the request arrived on. Mirrors
