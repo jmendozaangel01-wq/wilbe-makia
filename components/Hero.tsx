@@ -7,9 +7,12 @@ interface HeroProps {
   orgName: string;
   /** Organization logo (organizations.logo_url), null when unset. */
   logoUrl: string | null;
+  /** Heading element for the title. The marketing page embeds this hero as a
+   * demo below its own <h1>, so it passes "h2" there. Defaults to "h1". */
+  headingAs?: "h1" | "h2";
 }
 
-export default function Hero({ orgName, logoUrl }: HeroProps) {
+export default function Hero({ orgName, logoUrl, headingAs: Heading = "h1" }: HeroProps) {
   return (
     <div className="relative bg-charcoal px-6 py-16 sm:px-10 flex flex-col items-center gap-9">
       <div className="max-w-[640px] flex flex-col items-center gap-[18px] text-center">
@@ -30,10 +33,10 @@ export default function Hero({ orgName, logoUrl }: HeroProps) {
           Rifa en vivo
         </div>
 
-        <h1 className="font-display text-[42px] sm:text-[64px] leading-[0.95] tracking-[0.5px]">
+        <Heading className="font-display text-[42px] sm:text-[64px] leading-[0.95] tracking-[0.5px]">
           GÁNATE UNA <span className="text-red">XTZ 660</span>{" "}
           <span className="whitespace-nowrap">0-KM</span>
-        </h1>
+        </Heading>
 
         <div className="flex items-center gap-7 flex-wrap justify-center mt-1.5">
           <div>
