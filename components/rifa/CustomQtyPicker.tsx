@@ -1,20 +1,22 @@
 import { MAX_CUSTOM_QTY, MIN_CUSTOM_QTY, PRICE_PER_NUMBER, clampCustomQty, formatCOP } from "@/lib/constants";
 
 interface CustomQtyPickerProps {
+  /** Defaults to the real price; the marketing demo passes its fictional one. */
+  pricePerNumber?: number;
   qty: number;
   onQtyChange: (qty: number) => void;
   onSelect: () => void;
 }
 
-export default function CustomQtyPicker({ qty, onQtyChange, onSelect }: CustomQtyPickerProps) {
-  const price = qty * PRICE_PER_NUMBER;
+export default function CustomQtyPicker({ qty, onQtyChange, onSelect, pricePerNumber = PRICE_PER_NUMBER }: CustomQtyPickerProps) {
+  const price = qty * pricePerNumber;
 
   return (
     <div className="max-w-[1000px] mx-auto bg-charcoal-card border border-dashed border-gold/50 rounded-lg px-7 py-6 flex items-center gap-6 flex-wrap">
       <div className="flex-1 min-w-[220px]">
         <div className="font-extrabold text-base text-cream">Elige tú mismo la cantidad</div>
         <div className="text-[13px] text-gray mt-1">
-          Mínimo {MIN_CUSTOM_QTY}, máximo {MAX_CUSTOM_QTY} números · ${PRICE_PER_NUMBER} c/u
+          Mínimo {MIN_CUSTOM_QTY}, máximo {MAX_CUSTOM_QTY} números · ${pricePerNumber} c/u
         </div>
       </div>
 

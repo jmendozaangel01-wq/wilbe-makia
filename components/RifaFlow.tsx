@@ -8,6 +8,7 @@ import CustomQtyPicker from "@/components/rifa/CustomQtyPicker";
 import ReservationForm from "@/components/rifa/ReservationForm";
 import DemoNotice from "@/components/rifa/DemoNotice";
 import { pickReservationAction } from "@/lib/demo/simulate-reservation";
+import { DEMO_RAFFLE } from "@/lib/demo/demo-data";
 
 interface Selection {
   qty: number;
@@ -28,6 +29,8 @@ interface RifaFlowProps {
 
 export default function RifaFlow({ demo = false }: RifaFlowProps) {
   const [selection, setSelection] = useState<Selection | null>(null);
+  const paquetes = demo ? DEMO_RAFFLE.packages : PAQUETES;
+  const pricePerNumber = demo ? DEMO_RAFFLE.pricePerNumber : PRICE_PER_NUMBER;
   const [customQty, setCustomQty] = useState(MIN_CUSTOM_QTY);
   const [state, formAction, isPending] = useActionState(pickReservationAction(demo, submitReservation), initialState);
 
@@ -41,7 +44,7 @@ export default function RifaFlow({ demo = false }: RifaFlowProps) {
   }
 
   function selectCustom() {
-    setSelection({ qty: customQty, price: customQty * PRICE_PER_NUMBER, tipo: "custom" });
+    setSelection({ qty: customQty, price: customQty * pricePerNumber, tipo: "custom" });
     scrollToReserva();
   }
 
@@ -61,12 +64,12 @@ export default function RifaFlow({ demo = false }: RifaFlowProps) {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-[1000px] mx-auto mb-7">
-          {PAQUETES.map((paquete) => (
+          {paquetes.map((paquete) => (
             <PackageCard key={paquete.tipo} paquete={paquete} onSelect={() => selectPaquete(paquete)} />
           ))}
         </div>
 
-        <CustomQtyPicker qty={customQty} onQtyChange={handleCustomQtyChange} onSelect={selectCustom} />
+        <CustomQtyPicker qty={customQty} onQtyChange={handleCustomQtyChange} onSelect={selectCustom} pricePerNumber={pricePerNumber} />
       </div>
 
       {selection && (

@@ -15,6 +15,8 @@ import LandingHero from "@/components/landing/LandingHero";
 import HowItWorks from "@/components/landing/HowItWorks";
 import Features from "@/components/landing/Features";
 import DemoIntro from "@/components/landing/DemoIntro";
+import DemoHero from "@/components/landing/DemoHero";
+import DemoBlessedNumbers from "@/components/landing/DemoBlessedNumbers";
 import MarketingFooter from "@/components/landing/MarketingFooter";
 
 const MARKETING_TITLE = "Bendita Rifa — Crea y administra tu rifa online";
@@ -87,6 +89,30 @@ export default async function Home() {
   const headerList = await headers();
   const host = headerList.get("host");
 
+  if (selectHomeView(host) === "marketing") {
+    // Apex: marketing sections around a FICTIONAL, static demo raffle. This
+    // branch runs before any tenant lookup on purpose: it reads nothing from
+    // Supabase, and the flow runs in `demo` mode so reservations are
+    // simulated client-side and never reach submitReservation.
+    return (
+      <div className="mk font-body bg-charcoal text-cream min-h-screen overflow-x-hidden flex flex-col flex-1">
+        <MarketingHeader />
+        <main>
+          <LandingHero />
+          <HowItWorks />
+          <Features />
+          <DemoIntro />
+          <div className="bg-charcoal">
+            <DemoHero />
+            <DemoBlessedNumbers />
+            <RifaFlow demo />
+          </div>
+        </main>
+        <MarketingFooter />
+      </div>
+    );
+  }
+
   let org = null;
   if (host) {
     try {
@@ -105,30 +131,6 @@ export default async function Home() {
   const logoUrl = org?.logoUrl && isValidLogoUrl(org.logoUrl) ? org.logoUrl : null;
 
   const initialTaken = org ? await loadBlessedNumbersSnapshot(org.id) : [];
-
-  if (selectHomeView(host) === "marketing") {
-    // Apex: marketing sections around the SAME raffle components a tenant
-    // sees, fed by the same tenant-zero resolution above (read-only). The flow
-    // runs in `demo` mode: reservations are simulated client-side and never
-    // reach submitReservation.
-    return (
-      <div className="mk font-body bg-charcoal text-cream min-h-screen overflow-x-hidden flex flex-col flex-1">
-        <MarketingHeader />
-        <main>
-          <LandingHero />
-          <HowItWorks />
-          <Features />
-          <DemoIntro />
-          <div className="bg-charcoal">
-            <Hero orgName={orgName} logoUrl={logoUrl} headingAs="h2" />
-            <BlessedNumbers initialTaken={initialTaken} orgId={org?.id ?? null} />
-            <RifaFlow demo />
-          </div>
-        </main>
-        <MarketingFooter />
-      </div>
-    );
-  }
 
   return (
     <div className="font-body bg-charcoal text-cream min-h-screen overflow-x-hidden flex flex-col flex-1">

@@ -11,7 +11,7 @@ export default function DemoIntro() {
         </p>
         <div className="mx-auto mt-7 inline-flex items-center gap-2.5 rounded-sm border border-dashed border-gold/60 px-4 py-2 text-sm font-semibold text-gold">
           <span className="h-2 w-2 rounded-full bg-red animate-pulse-dot" aria-hidden="true" />
-          Ejemplo: rifa de una moto XTZ 660 0-km
+          Ejemplo ficticio: rifa de una moto 0 km
         </div>
       </div>
     </section>

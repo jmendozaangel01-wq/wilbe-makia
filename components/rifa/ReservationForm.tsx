@@ -6,6 +6,7 @@ import { NEQUI_NOMBRE, NEQUI_NUMERO, formatCOP, type PaqueteTipo } from "@/lib/c
 import type { ReservationState } from "@/app/actions";
 import type { DemoReservationState } from "@/lib/demo/simulate-reservation";
 import DemoNotice from "@/components/rifa/DemoNotice";
+import { DEMO_RAFFLE } from "@/lib/demo/demo-data";
 
 interface ReservationFormProps {
   selection: { qty: number; price: number; tipo: PaqueteTipo };
@@ -32,14 +33,25 @@ export default function ReservationForm({ selection, state, formAction, isPendin
         <div className="w-[70px] h-[70px] rounded-full bg-gold flex items-center justify-center mx-auto mb-6 text-[32px] text-charcoal">
           ✓
         </div>
-        <h3 className="font-display text-[30px] text-gold">PAGO EN VERIFICACIÓN</h3>
-        <p className="text-gray mt-3.5 leading-relaxed">
-          Tu comprobante fue recibido. Estamos verificando tu pago y te avisaremos por correo
-          cuando tus {state.cantidad} números queden confirmados.
-        </p>
-        <p className="text-gray/70 text-sm mt-4">
-          Si no ves el correo en un rato, revisa la carpeta de spam o promociones.
-        </p>
+        {demo ? (
+          <>
+            <h3 className="font-display text-[30px] text-gold">RESERVA CONFIRMADA (EJEMPLO)</h3>
+            <p className="text-gray mt-3.5 leading-relaxed">
+              Así verían tus compradores su reserva confirmada de {state.cantidad} números.
+            </p>
+          </>
+        ) : (
+          <>
+            <h3 className="font-display text-[30px] text-gold">PAGO EN VERIFICACIÓN</h3>
+            <p className="text-gray mt-3.5 leading-relaxed">
+              Tu comprobante fue recibido. Estamos verificando tu pago y te avisaremos por correo
+              cuando tus {state.cantidad} números queden confirmados.
+            </p>
+            <p className="text-gray/70 text-sm mt-4">
+              Si no ves el correo en un rato, revisa la carpeta de spam o promociones.
+            </p>
+          </>
+        )}
         {demo && (
           <div className="mt-8">
             {sampleNumbers.length > 0 && (
@@ -54,7 +66,7 @@ export default function ReservationForm({ selection, state, formAction, isPendin
                 </div>
               </div>
             )}
-            <DemoNotice detail="Los números son de ejemplo y no se envió ningún correo." />
+            <DemoNotice detail="Los números son de ejemplo: no se recibió ningún comprobante ni se envió ningún correo." />
             <a
               href="/auth/registro"
               className="mt-6 inline-block rounded bg-red px-7 py-4 text-base font-extrabold text-white transition hover:brightness-110"
@@ -148,15 +160,31 @@ export default function ReservationForm({ selection, state, formAction, isPendin
         </div>
 
         <div className="mt-5 bg-charcoal-card-alt rounded-lg p-6 flex gap-6 items-center flex-wrap">
-          <div className="w-[130px] h-[130px] flex-none border border-gold/60 rounded overflow-hidden relative bg-white">
-            <Image src="/nequi-qr.jpeg" alt="Código QR para pagar por Nequi" fill className="object-contain" />
-          </div>
+          {demo ? (
+            <div
+              role="img"
+              aria-label="Marcador de posición del código QR, no es un código real"
+              className="w-[130px] h-[130px] flex-none border border-dashed border-gold/60 rounded flex flex-col items-center justify-center gap-2 bg-charcoal text-gold/70"
+            >
+              <svg viewBox="0 0 24 24" className="h-12 w-12" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                <rect x="3" y="3" width="7" height="7" />
+                <rect x="14" y="3" width="7" height="7" />
+                <rect x="3" y="14" width="7" height="7" />
+              </svg>
+              <span className="text-[11px] font-bold tracking-wide uppercase">{DEMO_RAFFLE.payment.qrLabel}</span>
+            </div>
+          ) : (
+            <div className="w-[130px] h-[130px] flex-none border border-gold/60 rounded overflow-hidden relative bg-white">
+              <Image src="/nequi-qr.jpeg" alt="Código QR para pagar por Nequi" fill className="object-contain" />
+            </div>
+          )}
           <div>
             <div className="font-extrabold text-[15px]">Paga por Nequi</div>
             <div className="text-gray text-sm mt-1">
-              Número: <strong className="text-cream tracking-wide">{NEQUI_NUMERO}</strong>
+              Número:{" "}
+              <strong className="text-cream tracking-wide">{demo ? DEMO_RAFFLE.payment.number : NEQUI_NUMERO}</strong>
             </div>
-            <div className="text-gray text-sm">A nombre de: {NEQUI_NOMBRE}</div>
+            <div className="text-gray text-sm">A nombre de: {demo ? DEMO_RAFFLE.payment.holder : NEQUI_NOMBRE}</div>
             <div className="text-gold text-[13px] mt-1.5">
               Monto a pagar: ${formatCOP(selection.price)}
             </div>
