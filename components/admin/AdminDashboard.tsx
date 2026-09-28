@@ -56,6 +56,8 @@ interface AdminDashboardProps {
   raffleUrl: string | null;
   /** The raffle's own blessed numbers (raffles.numeros_bendecidos), [] when there is no raffle. */
   blessedNumbers: number[];
+  /** raffles.precio_por_numero for the active raffle, null when there is none. */
+  pricePerNumber: number | null;
   /** Active raffle id from AdminContext, null when there is no borrador/activa raffle. */
   raffleId: string | null;
 }
@@ -70,6 +72,7 @@ export default function AdminDashboard({
   qrUrl,
   raffleUrl,
   blessedNumbers,
+  pricePerNumber,
   raffleId,
 }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>("reservas");
@@ -233,6 +236,7 @@ export default function AdminDashboard({
           onCloseDetail={() => setSelectedReservaId(null)}
           onChanged={refetchReservas}
           blessedNumbers={blessedNumbers}
+          pricePerNumber={pricePerNumber}
         />
       ) : activeTab === "numeros" ? (
         <NumerosTab

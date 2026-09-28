@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { PRICE_PER_NUMBER, formatCOP, formatNumero } from "@/lib/constants";
+import { formatCOP, formatNumero } from "@/lib/constants";
 import { confirmarPago, editarNumero, getComprobanteUrl, reasignarNumeros, rechazarReserva } from "@/app/admin/actions";
 import type { Reserva, ReservaEstado } from "./AdminDashboard";
 
@@ -21,6 +21,8 @@ interface ReservasTabProps {
   onChanged: () => Promise<void>;
   /** The raffle's own blessed numbers (raffles.numeros_bendecidos). */
   blessedNumbers: number[];
+  /** The raffle's current price per number, null when there is no raffle. */
+  pricePerNumber: number | null;
 }
 
 export default function ReservasTab({
@@ -30,6 +32,7 @@ export default function ReservasTab({
   onCloseDetail,
   onChanged,
   blessedNumbers,
+  pricePerNumber,
 }: ReservasTabProps) {
   const selected = reservas.find((r) => r.id === selectedReservaId) ?? null;
 
@@ -147,6 +150,7 @@ export default function ReservasTab({
       onCloseDetail={onCloseDetail}
       onChanged={onChanged}
       blessedNumbers={blessedNumbers}
+      pricePerNumber={pricePerNumber}
     />
   );
 }
@@ -156,13 +160,16 @@ interface ReservaDetailProps {
   onCloseDetail: () => void;
   onChanged: () => Promise<void>;
   blessedNumbers: number[];
+  pricePerNumber: number | null;
 }
 
-function ReservaDetail({ reserva, onCloseDetail, onChanged, blessedNumbers }: ReservaDetailProps) {
+function ReservaDetail({ reserva, onCloseDetail, onChanged, blessedNumbers, pricePerNumber }: ReservaDetailProps) {
   const blessedDisplays = new Set(blessedNumbers.map(formatNumero));
   const meta = STATUS_META[reserva.estado];
   const qty = reserva.numeros_asignados.length;
-  const price = qty * PRICE_PER_NUMBER;
+  // The current raffle price, not what the buyer paid: reservas stores no
+  // total, so editing the price later changes how older reservations read.
+  const paquete = pricePerNumber === null ? `${qty} números` : `${qty} números — $${formatCOP(qty * pricePerNumber)}`;
 
   const [comprobanteUrl, setComprobanteUrl] = useState<string | null>(null);
   const [comprobanteError, setComprobanteError] = useState<string | null>(null);
@@ -303,7 +310,7 @@ function ReservaDetail({ reserva, onCloseDetail, onChanged, blessedNumbers }: Re
             <Field label="WhatsApp" value={reserva.whatsapp} />
             <Field label="Dirección" value={reserva.direccion} />
             <Field label="Ciudad" value={reserva.ciudad} />
-            <Field label="Paquete" value={`${qty} números — $${formatCOP(price)}`} />
+            <Field label="Paquete" value={paquete} />
           </div>
         </div>
 

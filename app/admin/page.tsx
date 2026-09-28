@@ -120,6 +120,7 @@ export default async function AdminPage() {
       qrUrl={raffle?.qr_url ?? null}
       raffleUrl={org && host ? buildTenantAdminUrl(org.subdomain, host, "/") : null}
       blessedNumbers={raffle?.numeros_bendecidos ?? []}
+      pricePerNumber={raffle?.precio_por_numero ?? null}
       raffleId={context.raffleId ?? null}
     />
   );
