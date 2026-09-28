@@ -16,7 +16,12 @@ const mockState = vi.hoisted(() => ({
   userClient: null as unknown,
 }));
 
+const revalidate = vi.hoisted(() => vi.fn());
+
 vi.mock("server-only", () => ({}));
+// revalidatePath throws outside a Next request context, so the action's call to
+// it needs a stand-in here; it is also what the tests below assert on.
+vi.mock("next/cache", () => ({ revalidatePath: revalidate }));
 vi.mock("next/headers", () => ({
   headers: async () => new Headers(mockState.host ? { host: mockState.host } : {}),
 }));
@@ -100,9 +105,13 @@ describe("updateRaffleConfig", () => {
     await admin.from("organizations").update({ logo_url: "https://example.com/keep.png" }).eq("id", org.id);
     await admin.from("raffles").update({ qr_url: "https://example.com/keep-qr.png" }).eq("id", raffle.id);
     activate(org, user);
+    revalidate.mockClear();
 
     const result = await updateRaffleConfig({ status: "idle" }, form());
     expect(result.status).toBe("success");
+    // The admin page passes the raffle's blessed numbers down as props, so a
+    // save must refresh it or the Reservas/Numeros tabs keep the old list.
+    expect(revalidate).toHaveBeenCalledWith("/admin");
     if (result.status === "success") {
       // Regression: this action used to return null here whenever no new
       // file was uploaded, even though the DB still had a logo/QR -- the
@@ -122,9 +131,11 @@ describe("updateRaffleConfig", () => {
   it("returns field errors without calling the RPC for invalid input", async () => {
     const { org, raffle, user } = await setup("save-invalid");
     activate(org, user);
+    revalidate.mockClear();
 
     const result = await updateRaffleConfig({ status: "idle" }, form({ nequiNumero: "123" }));
     expect(result.status).toBe("error");
+    expect(revalidate).not.toHaveBeenCalled();
     if (result.status === "error") {
       expect(result.fieldErrors.nequiNumero).toBeDefined();
     }

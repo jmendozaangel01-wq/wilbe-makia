@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { BLESSED_NUMBERS, formatNumero } from "@/lib/constants";
+import { formatNumero } from "@/lib/constants";
 import type { NumeroCounts } from "./AdminDashboard";
 
 type NumeroEstado = "disponible" | "reservado" | "vendido";
@@ -33,9 +33,12 @@ interface NumerosTabProps {
   initialCounts: NumeroCounts;
   changeTick: number;
   onViewReserva: (id: string) => void;
+  /** The raffle's own blessed numbers (raffles.numeros_bendecidos). */
+  blessedNumbers: number[];
+  raffleId: string | null;
 }
 
-export default function NumerosTab({ initialCounts, changeTick, onViewReserva }: NumerosTabProps) {
+export default function NumerosTab({ initialCounts, changeTick, onViewReserva, blessedNumbers, raffleId }: NumerosTabProps) {
   const [counts, setCounts] = useState<NumeroCounts>(initialCounts);
   const [rangeIndex, setRangeIndex] = useState(0);
   const [gridRows, setGridRows] = useState<NumeroRow[]>([]);
@@ -46,27 +49,33 @@ export default function NumerosTab({ initialCounts, changeTick, onViewReserva }:
   const [blessedRows, setBlessedRows] = useState<NumeroRow[]>([]);
 
   useEffect(() => {
+    if (blessedNumbers.length === 0) {
+      setBlessedRows([]);
+      return;
+    }
+
     let cancelled = false;
     const supabase = createClient();
 
-    supabase
+    let query = supabase
       .from("numeros")
       .select("numero, estado, es_bendecido, reserva_id")
-      .in("numero", BLESSED_NUMBERS.map(Number))
-      .order("numero")
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          console.error("[admin] failed to load blessed numeros", { error: error.message });
-          return;
-        }
-        setBlessedRows((data as NumeroRow[]) ?? []);
-      });
+      .in("numero", blessedNumbers);
+    if (raffleId) query = query.eq("raffle_id", raffleId);
+
+    query.order("numero").then(({ data, error }) => {
+      if (cancelled) return;
+      if (error) {
+        console.error("[admin] failed to load blessed numeros", { error: error.message });
+        return;
+      }
+      setBlessedRows((data as NumeroRow[]) ?? []);
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [changeTick]);
+  }, [changeTick, blessedNumbers, raffleId]);
 
   useEffect(() => {
     let cancelled = false;

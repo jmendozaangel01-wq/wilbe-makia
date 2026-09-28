@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminContext, type AdminContext } from "@/lib/auth/admin-context";
 import { validateRaffleConfigInput, type RaffleConfigErrors, type RaffleConfigInput } from "@/lib/raffle-config/validate";
@@ -203,6 +204,11 @@ export async function updateRaffleConfig(_prev: RaffleConfigState, formData: For
     console.error("[admin] actualizar_rifa failed", { error: error.message });
     return { status: "error", error: rpcErrorMessage(GENERIC_ERROR_MESSAGE, error), fieldErrors: {}, values };
   }
+
+  // app/admin/page.tsx hands the raffle's blessed numbers to the Reservas and
+  // Numeros tabs as props; without this they would keep the previous list
+  // until a manual reload.
+  revalidatePath("/admin");
 
   return { status: "success", values, logoUrl, qrUrl };
 }
