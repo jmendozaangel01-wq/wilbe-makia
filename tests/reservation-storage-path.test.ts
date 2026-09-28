@@ -182,6 +182,97 @@ describe("submitReservation tenant wiring", () => {
     expect(reserva).toBeNull();
   });
 
+  it("validates cantidad against this tenant's own paquetes, not the legacy global PAQUETES constant", async () => {
+    const org = await createTestOrg(admin, "reserva-custom-paquetes");
+    createdOrgIds.push(org.id);
+    // A tenant whose package tiers don't match lib/constants.ts's PAQUETES
+    // (65/100/120) at all -- proves cantidad validation reads raffles.paquetes.
+    const raffle = await createTestRaffle(admin, org.id, "reserva-custom-paquetes", {
+      maxNumero: 199,
+      paquetes: [{ tipo: "paquete_10", qty: 10, price: 2000 }],
+    });
+    await seedNumeros(admin, raffle);
+    mockState.host = `${org.subdomain}.benditarifa.com`;
+
+    const correo = `buyer-${Date.now()}-${Math.random()}@example.com`;
+    const fd = buildFormData(correo);
+    fd.set("paqueteTipo", "paquete_10");
+    fd.set("cantidad", "10");
+
+    const result = await submitReservation({ status: "idle" }, fd);
+    expect(result.status).toBe("success");
+
+    const { data: reserva } = await admin
+      .from("reservas")
+      .select("comprobante_url")
+      .eq("correo", correo)
+      .maybeSingle();
+    if ((reserva as { comprobante_url: string | null } | null)?.comprobante_url) {
+      uploadedPaths.push((reserva as { comprobante_url: string }).comprobante_url);
+    }
+  });
+
+  it("rejects a paqueteTipo/cantidad combination that isn't one of this tenant's own paquetes", async () => {
+    const org = await createTestOrg(admin, "reserva-wrong-paquete");
+    createdOrgIds.push(org.id);
+    // This tenant's raffle only has a paquete_10 -- paquete_65/qty 65 (the
+    // default fixture shape used elsewhere) doesn't exist for it.
+    const raffle = await createTestRaffle(admin, org.id, "reserva-wrong-paquete", {
+      maxNumero: 199,
+      paquetes: [{ tipo: "paquete_10", qty: 10, price: 2000 }],
+    });
+    await seedNumeros(admin, raffle);
+    mockState.host = `${org.subdomain}.benditarifa.com`;
+
+    const correo = `buyer-${Date.now()}-${Math.random()}@example.com`;
+    const result = await submitReservation({ status: "idle" }, buildFormData(correo));
+
+    expect(result).toEqual({ status: "error", error: "La cantidad seleccionada no es válida." });
+
+    const { data: reserva } = await admin.from("reservas").select("id").eq("correo", correo).maybeSingle();
+    expect(reserva).toBeNull();
+  });
+
+  it("fails with a clear buyer-facing error instead of throwing when the raffle's paquetes is empty", async () => {
+    const org = await createTestOrg(admin, "reserva-empty-paquetes");
+    createdOrgIds.push(org.id);
+    const raffle = await createTestRaffle(admin, org.id, "reserva-empty-paquetes", {
+      maxNumero: 199,
+      paquetes: [],
+    });
+    await seedNumeros(admin, raffle);
+    mockState.host = `${org.subdomain}.benditarifa.com`;
+
+    const correo = `buyer-${Date.now()}-${Math.random()}@example.com`;
+    const result = await submitReservation({ status: "idle" }, buildFormData(correo));
+
+    expect(result).toEqual({ status: "error", error: "Esta rifa no está disponible en este momento." });
+
+    const { data: reserva } = await admin.from("reservas").select("id").eq("correo", correo).maybeSingle();
+    expect(reserva).toBeNull();
+  });
+
+  it("fails with a clear buyer-facing error instead of throwing when paquetes is a malformed non-array value", async () => {
+    const org = await createTestOrg(admin, "reserva-malformed-paquetes");
+    createdOrgIds.push(org.id);
+    const raffle = await createTestRaffle(admin, org.id, "reserva-malformed-paquetes", { maxNumero: 199 });
+    await seedNumeros(admin, raffle);
+    // Simulate a corrupted jsonb value that never happens through the app's
+    // own write paths (both actualizar_rifa and crear_organizacion_con_rifa
+    // always persist an array) -- a raw update bypasses that guarantee to
+    // exercise the defense-in-depth check on the read side.
+    await admin.from("raffles").update({ paquetes: { not: "an array" } }).eq("id", raffle.id);
+    mockState.host = `${org.subdomain}.benditarifa.com`;
+
+    const correo = `buyer-${Date.now()}-${Math.random()}@example.com`;
+    const result = await submitReservation({ status: "idle" }, buildFormData(correo));
+
+    expect(result).toEqual({ status: "error", error: "Esta rifa no está disponible en este momento." });
+
+    const { data: reserva } = await admin.from("reservas").select("id").eq("correo", correo).maybeSingle();
+    expect(reserva).toBeNull();
+  });
+
   it("fails with a clear buyer-facing error and uploads nothing when the organization has no active raffle", async () => {
     const org = await createTestOrg(admin, "reserva-no-active-raffle");
     createdOrgIds.push(org.id);

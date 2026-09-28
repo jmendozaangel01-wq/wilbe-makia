@@ -8,7 +8,11 @@ export const SORTEO_FECHA = "15 OCT 2026";
 export const NEQUI_NUMERO = "3015649719";
 export const NEQUI_NOMBRE = "Jairo Mendoza";
 
-export type PaqueteTipo = "paquete_65" | "paquete_100" | "paquete_120" | "custom";
+// "custom" is the reserved sentinel for the free-quantity picker (never a
+// real package's own tipo, which is always a dynamic `paquete_<qty>` tag --
+// see lib/onboarding/validate.ts/lib/raffle-config/validate.ts). Every other
+// value is tenant-specific, so this can't be a fixed literal union.
+export type PaqueteTipo = string;
 
 export interface Paquete {
   tipo: PaqueteTipo;

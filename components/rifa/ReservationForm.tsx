@@ -1,8 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Image from "next/image";
-import { NEQUI_NOMBRE, NEQUI_NUMERO, formatCOP, type PaqueteTipo } from "@/lib/constants";
+import { formatCOP, type PaqueteTipo } from "@/lib/constants";
 import type { ReservationState } from "@/app/actions";
 import type { DemoReservationState } from "@/lib/demo/simulate-reservation";
 import DemoNotice from "@/components/rifa/DemoNotice";
@@ -15,12 +14,27 @@ interface ReservationFormProps {
   isPending: boolean;
   /** Landing-page simulation: adds demo notices and the sign-up CTA. Off for tenants. */
   demo?: boolean;
+  /** This tenant's real raffles.nequi_numero (ignored when demo=true). */
+  nequiNumero?: string;
+  /** This tenant's real raffles.nequi_nombre (ignored when demo=true). */
+  nequiNombre?: string;
+  /** This tenant's real raffles.qr_url, null when they haven't uploaded one (ignored when demo=true). */
+  qrUrl?: string | null;
 }
 
 const inputClass =
   "w-full bg-charcoal border border-border text-white text-[15px] px-4 py-3 rounded placeholder:text-gray focus:outline-none focus:border-gold transition";
 
-export default function ReservationForm({ selection, state, formAction, isPending, demo = false }: ReservationFormProps) {
+export default function ReservationForm({
+  selection,
+  state,
+  formAction,
+  isPending,
+  demo = false,
+  nequiNumero,
+  nequiNombre,
+  qrUrl = null,
+}: ReservationFormProps) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [showComprobanteWarning, setShowComprobanteWarning] = useState(false);
@@ -173,18 +187,25 @@ export default function ReservationForm({ selection, state, formAction, isPendin
               </svg>
               <span className="text-[11px] font-bold tracking-wide uppercase">{DEMO_RAFFLE.payment.qrLabel}</span>
             </div>
-          ) : (
+          ) : qrUrl ? (
             <div className="w-[130px] h-[130px] flex-none border border-gold/60 rounded overflow-hidden relative bg-white">
-              <Image src="/nequi-qr.jpeg" alt="Código QR para pagar por Nequi" fill className="object-contain" />
+              {/* Plain <img>, not next/image: storage-hosted (Supabase public
+                  bucket), matching Hero.tsx's own convention for logoUrl. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={qrUrl} alt="Código QR para pagar por Nequi" className="w-full h-full object-contain" />
+            </div>
+          ) : (
+            <div className="w-[130px] h-[130px] flex-none border border-gold/60 rounded flex items-center justify-center bg-charcoal-card text-center px-3">
+              <span className="text-gray text-[12px] leading-snug">Paga desde la app Nequi al número de al lado</span>
             </div>
           )}
           <div>
             <div className="font-extrabold text-[15px]">Paga por Nequi</div>
             <div className="text-gray text-sm mt-1">
               Número:{" "}
-              <strong className="text-cream tracking-wide">{demo ? DEMO_RAFFLE.payment.number : NEQUI_NUMERO}</strong>
+              <strong className="text-cream tracking-wide">{demo ? DEMO_RAFFLE.payment.number : nequiNumero}</strong>
             </div>
-            <div className="text-gray text-sm">A nombre de: {demo ? DEMO_RAFFLE.payment.holder : NEQUI_NOMBRE}</div>
+            <div className="text-gray text-sm">A nombre de: {demo ? DEMO_RAFFLE.payment.holder : nequiNombre}</div>
             <div className="text-gold text-[13px] mt-1.5">
               Monto a pagar: ${formatCOP(selection.price)}
             </div>

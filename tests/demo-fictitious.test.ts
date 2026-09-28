@@ -21,6 +21,11 @@ vi.mock("@/lib/tenant/resolve", () => ({
   resolveOrganizationByHost: mocks.resolveOrganizationByHost,
   DEFAULT_ORG_NAME: "Rifamakia",
 }));
+vi.mock("next/navigation", () => ({
+  notFound: () => {
+    throw new Error("NEXT_NOT_FOUND");
+  },
+}));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.createAdminClient }));
 vi.mock("@/lib/supabase/client", () => ({ createClient: mocks.createClient }));
 vi.mock("@/app/actions", () => ({ submitReservation: vi.fn() }));
@@ -91,8 +96,158 @@ describe("marketing home render", () => {
   it("still does the tenant lookup on a tenant host", async () => {
     mocks.host = "acme.benditarifa.com";
     mocks.resolveOrganizationByHost.mockResolvedValue(null);
-    await Home();
+    await expect(Home()).rejects.toThrow("NEXT_NOT_FOUND");
     expect(mocks.resolveOrganizationByHost).toHaveBeenCalledWith("acme.benditarifa.com");
+  });
+
+  it("returns 404 for a subdomain that maps to no organization, instead of rendering a fake raffle page", async () => {
+    mocks.host = "wber-makia.benditarifa.com";
+    mocks.resolveOrganizationByHost.mockResolvedValue(null);
+    await expect(Home()).rejects.toThrow("NEXT_NOT_FOUND");
+    expect(mocks.createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it("keeps rendering (fail-soft) when tenant resolution itself errors, so a DB blip does not 404 real raffles", async () => {
+    mocks.host = "acme.benditarifa.com";
+    mocks.resolveOrganizationByHost.mockRejectedValue(new Error("db down"));
+    const html = renderToStaticMarkup(await Home());
+    expect(html).toContain("no está disponible en este momento");
+  });
+});
+
+describe("tenant home render uses this tenant's real data, not lib/constants", () => {
+  // Fakes just enough of the Supabase query-builder chain that
+  // loadBlessedNumbersData()/loadActiveRaffleForBuyer() (app/page.tsx) call,
+  // per table: numeros' chain ends in a plain awaited value (array select),
+  // raffles' chain ends in .maybeSingle().
+  function fakeAdminClient(rows: { numeros: unknown; raffle: unknown }) {
+    return {
+      from: (table: string) => {
+        if (table === "numeros") {
+          return { select: () => ({ eq: () => ({ eq: () => rows.numeros }) }) };
+        }
+        if (table === "raffles") {
+          return { select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: () => rows.raffle }) }) }) };
+        }
+        throw new Error(`unexpected table in test fake: ${table}`);
+      },
+    };
+  }
+
+  it("renders this tenant's own price/Nequi/sorteo instead of the legacy hardcoded values", async () => {
+    mocks.host = "acme.benditarifa.com";
+    mocks.resolveOrganizationByHost.mockResolvedValue({
+      id: "org-acme",
+      subdomain: "acme",
+      nombre: "Rifa Acme",
+      logoUrl: null,
+      colorPrimario: null,
+      isPlatformOwner: false,
+      subscriptionStatus: "active",
+      trialEndsAt: null,
+    });
+    mocks.createAdminClient.mockReturnValue(
+      fakeAdminClient({
+        numeros: { data: [], error: null },
+        raffle: {
+          data: {
+            precio_por_numero: 777,
+            paquetes: [{ tipo: "paquete_10", qty: 10, price: 7770 }],
+            nequi_numero: "3001112222",
+            nequi_nombre: "Acme Titular",
+            qr_url: null,
+            sorteo_fecha: "31 DIC 2026",
+          },
+          error: null,
+        },
+      })
+    );
+
+    const html = renderToStaticMarkup(await Home());
+
+    // The Nequi/QR payment box only mounts once a package is picked (client
+    // state in RifaFlow), so a static pre-selection render can't observe it
+    // here -- covered instead by the "ReservationForm payment box" tests
+    // above, which mount it directly with explicit props. This render does
+    // cover Hero (price, sorteo) and the package cards (from raffles.paquetes).
+    expect(html).toContain("$777");
+    expect(html).toContain("31 DIC 2026");
+    expect(html).toContain("$7.770"); // paquete_10 price, from raffles.paquetes, not PAQUETES
+    // Only the fields this batch wired are asserted here -- Hero's hardcoded
+    // prize name/image ("XTZ 660", moto-hero.jpg) and SiteNav's hardcoded
+    // "WILBER MAKIA" brand are separate, pre-existing, out-of-scope issues
+    // (no raffles column for prize name/image exists yet), so REAL_STRINGS'
+    // full list isn't the right check for a tenant (non-demo) render.
+    expect(html).not.toContain("3015649719");
+    expect(html).not.toContain("Jairo Mendoza");
+  });
+
+  it("shows an unavailable state instead of falling back to the legacy constants when the tenant has no active raffle row", async () => {
+    mocks.host = "empty.benditarifa.com";
+    mocks.resolveOrganizationByHost.mockResolvedValue({
+      id: "org-empty",
+      subdomain: "empty",
+      nombre: "Rifa Vacia",
+      logoUrl: null,
+      colorPrimario: null,
+      isPlatformOwner: false,
+      subscriptionStatus: "active",
+      trialEndsAt: null,
+    });
+    mocks.createAdminClient.mockReturnValue(
+      fakeAdminClient({ numeros: { data: [], error: null }, raffle: { data: null, error: null } })
+    );
+
+    const html = renderToStaticMarkup(await Home());
+
+    // Post-review fix: a transient fetch failure or a tenant with no active
+    // raffle used to fail-soft into showing the platform owner's own Nequi
+    // account/price/packages to buyers -- a real money-misdirection risk.
+    // It must now render a clear "unavailable" state instead, never any of
+    // the legacy constant values.
+    expect(html).toContain("no está disponible en este momento");
+    expect(html).not.toContain("$200"); // PRICE_PER_NUMBER
+    expect(html).not.toContain("15 OCT 2026"); // SORTEO_FECHA
+    expect(html).not.toContain("$13.000"); // PAQUETES' paquete_65 price
+    expect(html).not.toContain("3015649719"); // NEQUI_NUMERO
+    expect(html).not.toContain("Jairo Mendoza"); // NEQUI_NOMBRE
+  });
+
+  it("shows the same unavailable state when the raffle exists but has no packages configured", async () => {
+    mocks.host = "nopkg.benditarifa.com";
+    mocks.resolveOrganizationByHost.mockResolvedValue({
+      id: "org-nopkg",
+      subdomain: "nopkg",
+      nombre: "Rifa Sin Paquetes",
+      logoUrl: null,
+      colorPrimario: null,
+      isPlatformOwner: false,
+      subscriptionStatus: "active",
+      trialEndsAt: null,
+    });
+    mocks.createAdminClient.mockReturnValue(
+      fakeAdminClient({
+        numeros: { data: [], error: null },
+        raffle: {
+          data: {
+            precio_por_numero: 500,
+            paquetes: [],
+            nequi_numero: "3005556666",
+            nequi_nombre: "Alguien",
+            qr_url: null,
+            sorteo_fecha: "1 ENE 2027",
+          },
+          error: null,
+        },
+      })
+    );
+
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("no está disponible en este momento");
+    expect(html).not.toContain("3015649719");
+    expect(html).not.toContain("Jairo Mendoza");
+    expect(html).not.toContain("$200");
   });
 });
 
@@ -106,10 +261,45 @@ describe("ReservationForm payment box", () => {
     for (const s of REAL_STRINGS) expect(html).not.toContain(s);
   });
 
-  it("real mode keeps the real payment box", () => {
-    const html = renderToStaticMarkup(createElement(ReservationForm, { ...base, state: { status: "idle" } }));
+  it("real mode shows the tenant's own Nequi number/name, no longer a hardcoded default", () => {
+    const html = renderToStaticMarkup(
+      createElement(ReservationForm, {
+        ...base,
+        state: { status: "idle" },
+        nequiNumero: "3015649719",
+        nequiNombre: "Jairo Mendoza",
+      })
+    );
     expect(html).toContain("3015649719");
     expect(html).toContain("Jairo Mendoza");
+  });
+
+  it("real mode with no qrUrl shows a text fallback, never a real tenant's QR image", () => {
+    const html = renderToStaticMarkup(
+      createElement(ReservationForm, {
+        ...base,
+        state: { status: "idle" },
+        nequiNumero: "3009998888",
+        nequiNombre: "Otro Titular",
+        qrUrl: null,
+      })
+    );
+    expect(html).not.toContain("<img");
+    expect(html).toContain("Paga desde la app Nequi");
+  });
+
+  it("real mode with a qrUrl renders it as a plain img, not a hardcoded asset", () => {
+    const html = renderToStaticMarkup(
+      createElement(ReservationForm, {
+        ...base,
+        state: { status: "idle" },
+        nequiNumero: "3009998888",
+        nequiNombre: "Otro Titular",
+        qrUrl: "https://example.supabase.co/storage/v1/object/public/logos/org-1/qr-abc.png",
+      })
+    );
+    expect(html).toContain("https://example.supabase.co/storage/v1/object/public/logos/org-1/qr-abc.png");
+    for (const s of REAL_STRINGS) expect(html).not.toContain(s);
   });
 
   it("demo success copy does not claim a receipt or an email", () => {
