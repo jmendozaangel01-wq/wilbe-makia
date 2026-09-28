@@ -165,7 +165,7 @@ export default function OnboardingWizard({ apexDomain }: { apexDomain: string })
         <Field
           name="maxNumero"
           label="Número máximo"
-          hint="La rifa tendrá los números del 0 al máximo (por ejemplo 999 = 1.000 números)."
+          hint="La rifa tendrá los números del 0 al máximo (por ejemplo 999 = 1.000 números). Elígelo con cuidado: no se puede cambiar después de crear la rifa."
           values={values}
           error={errors.maxNumero}
           inputMode="numeric"

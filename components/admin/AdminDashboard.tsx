@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ReservasTab from "./ReservasTab";
 import NumerosTab from "./NumerosTab";
+import ConfiguracionTab, { type RaffleConfigData } from "./ConfiguracionTab";
 
 export type ReservaEstado = "pendiente_pago" | "en_verificacion" | "confirmado" | "expirado" | "rechazado";
 
@@ -29,7 +30,7 @@ export interface NumeroCounts {
   vendidos: number;
 }
 
-type Tab = "reservas" | "numeros";
+type Tab = "reservas" | "numeros" | "configuracion";
 
 interface AdminDashboardProps {
   initialReservas: Reserva[];
@@ -45,9 +46,23 @@ interface AdminDashboardProps {
    * realtime.setAuth() is called below.
    */
   organizationId: string;
+  /** Current raffle config values, null when there is no borrador/activa raffle. */
+  raffleConfig: RaffleConfigData | null;
+  /** organizations.logo_url, null when unset (product/tenant-admin-raffle-config). */
+  logoUrl: string | null;
+  /** raffles.qr_url, null when unset (product/tenant-admin-raffle-config). */
+  qrUrl: string | null;
 }
 
-export default function AdminDashboard({ initialReservas, initialCounts, orgName, organizationId }: AdminDashboardProps) {
+export default function AdminDashboard({
+  initialReservas,
+  initialCounts,
+  orgName,
+  organizationId,
+  raffleConfig,
+  logoUrl,
+  qrUrl,
+}: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>("reservas");
   const [reservas, setReservas] = useState<Reserva[]>(initialReservas);
   const [selectedReservaId, setSelectedReservaId] = useState<string | null>(null);
@@ -183,6 +198,22 @@ export default function AdminDashboard({ initialReservas, initialCounts, orgName
         >
           Números
         </button>
+        <button
+          onClick={() => setActiveTab("configuracion")}
+          style={{
+            background: "none",
+            border: "none",
+            padding: "14px 6px",
+            fontWeight: 700,
+            fontSize: "14px",
+            cursor: "pointer",
+            color: activeTab === "configuracion" ? "oklch(0.25 0.02 40)" : "oklch(0.55 0.01 40)",
+            borderBottom: `2px solid ${activeTab === "configuracion" ? "oklch(0.52 0.21 26)" : "transparent"}`,
+            marginLeft: "20px",
+          }}
+        >
+          Configuración
+        </button>
       </div>
 
       {activeTab === "reservas" ? (
@@ -193,8 +224,10 @@ export default function AdminDashboard({ initialReservas, initialCounts, orgName
           onCloseDetail={() => setSelectedReservaId(null)}
           onChanged={refetchReservas}
         />
-      ) : (
+      ) : activeTab === "numeros" ? (
         <NumerosTab initialCounts={initialCounts} changeTick={changeTick} onViewReserva={goToReserva} />
+      ) : (
+        <ConfiguracionTab raffle={raffleConfig} logoUrl={logoUrl} qrUrl={qrUrl} />
       )}
     </div>
   );

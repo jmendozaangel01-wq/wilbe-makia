@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminContext, AdminContextError } from "@/lib/auth/admin-context";
 import { resolveOrganizationByHost, DEFAULT_ORG_NAME } from "@/lib/tenant/resolve";
 import AdminDashboard, { type Reserva, type NumeroCounts } from "@/components/admin/AdminDashboard";
+import type { RaffleConfigData } from "@/components/admin/ConfiguracionTab";
 
 export default async function AdminPage() {
   let context;
@@ -40,7 +41,7 @@ export default async function AdminPage() {
 
   const admin = createAdminClient();
 
-  const [{ data: reservas, error: reservasError }, disponibles, reservados, vendidos] = await Promise.all([
+  const [{ data: reservas, error: reservasError }, disponibles, reservados, vendidos, raffleRow] = await Promise.all([
     admin
       .from("reservas")
       .select("*")
@@ -61,10 +62,21 @@ export default async function AdminPage() {
       .select("*", { count: "exact", head: true })
       .eq("organization_id", context.organizationId)
       .eq("estado", "vendido"),
+    context.raffleId
+      ? admin
+          .from("raffles")
+          .select("nombre, max_numero, precio_por_numero, sorteo_fecha, nequi_numero, nequi_nombre, numeros_bendecidos, qr_url")
+          .eq("id", context.raffleId)
+          .eq("organization_id", context.organizationId)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
 
   if (reservasError) {
     console.error("[admin] failed to load reservas", { error: reservasError.message });
+  }
+  if (raffleRow.error) {
+    console.error("[admin] failed to load raffle config", { error: raffleRow.error.message });
   }
 
   const counts: NumeroCounts = {
@@ -73,12 +85,38 @@ export default async function AdminPage() {
     vendidos: vendidos.count ?? 0,
   };
 
+  const raffle = raffleRow.data as {
+    nombre: string;
+    max_numero: number;
+    precio_por_numero: number;
+    sorteo_fecha: string;
+    nequi_numero: string;
+    nequi_nombre: string;
+    numeros_bendecidos: number[];
+    qr_url: string | null;
+  } | null;
+
+  const raffleConfig: RaffleConfigData | null = raffle
+    ? {
+        raffleName: raffle.nombre,
+        maxNumero: raffle.max_numero,
+        precioPorNumero: String(raffle.precio_por_numero),
+        sorteoFecha: raffle.sorteo_fecha,
+        nequiNumero: raffle.nequi_numero,
+        nequiNombre: raffle.nequi_nombre,
+        numerosBendecidos: raffle.numeros_bendecidos.join(", "),
+      }
+    : null;
+
   return (
     <AdminDashboard
       initialReservas={(reservas as Reserva[]) ?? []}
       initialCounts={counts}
       orgName={orgName}
       organizationId={context.organizationId}
+      raffleConfig={raffleConfig}
+      logoUrl={org?.logoUrl ?? null}
+      qrUrl={raffle?.qr_url ?? null}
     />
   );
 }
