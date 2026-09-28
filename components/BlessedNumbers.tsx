@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { BLESSED_NUMBERS, formatNumero } from "@/lib/constants";
+import { formatNumero } from "@/lib/constants";
 
 interface BlessedNumberBroadcastPayload {
   numero: number;
@@ -12,6 +12,15 @@ interface BlessedNumberBroadcastPayload {
 }
 
 interface BlessedNumbersProps {
+  /**
+   * This tenant's actual raffles.numeros_bendecidos (design tenant raffle
+   * data, product/tenant-admin-raffle-config), as padded numero_display
+   * strings, fetched server-side by app/page.tsx alongside initialTaken
+   * below. Replaces the old hardcoded BLESSED_NUMBERS constant, which showed
+   * the same fixed 15 numbers to every tenant's buyers regardless of what
+   * that tenant actually configured.
+   */
+  blessedNumbers: string[];
   /**
    * Server-resolved initial snapshot (design D8) -- the padded numero_display
    * strings that are already "vendido" at render time. Fetched by the parent
@@ -30,7 +39,7 @@ interface BlessedNumbersProps {
   orgId: string | null;
 }
 
-export default function BlessedNumbers({ initialTaken, orgId }: BlessedNumbersProps) {
+export default function BlessedNumbers({ blessedNumbers, initialTaken, orgId }: BlessedNumbersProps) {
   const [taken, setTaken] = useState<Set<string>>(() => new Set(initialTaken));
 
   useEffect(() => {
@@ -75,7 +84,7 @@ export default function BlessedNumbers({ initialTaken, orgId }: BlessedNumbersPr
         principal.
       </p>
       <div className="flex flex-wrap gap-3.5 justify-center max-w-[900px] mx-auto">
-        {BLESSED_NUMBERS.map((numero) => {
+        {blessedNumbers.map((numero) => {
           const isTaken = taken.has(numero);
           return (
             <div

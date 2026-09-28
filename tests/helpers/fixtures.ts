@@ -47,13 +47,37 @@ export interface TestRaffle {
   maxNumero: number;
 }
 
+export interface TestPaquete {
+  tipo: string;
+  qty: number;
+  price: number;
+}
+
 export async function createTestRaffle(
   admin: SupabaseClient,
   organizationId: string,
   tag: string,
-  opts: { maxNumero?: number; estado?: "borrador" | "activa" | "cerrada" | "archivada" } = {}
+  opts: {
+    maxNumero?: number;
+    estado?: "borrador" | "activa" | "cerrada" | "archivada";
+    precioPorNumero?: number;
+    paquetes?: TestPaquete[];
+    nequiNumero?: string;
+    nequiNombre?: string;
+    sorteoFecha?: string;
+    qrUrl?: string | null;
+  } = {}
 ): Promise<TestRaffle> {
   const maxNumero = opts.maxNumero ?? 49;
+  const precioPorNumero = opts.precioPorNumero ?? 200;
+  // Fixed, realistic default so any real-buyer-flow test (submitReservation)
+  // can submit a "paquete_65"/qty 65 package out of the box without every
+  // caller having to specify paquetes itself -- override via opts.paquetes
+  // for tests that care about a specific price/package shape.
+  const paquetes =
+    opts.paquetes ??
+    [65, 100, 120].map((qty) => ({ tipo: `paquete_${qty}`, qty, price: qty * precioPorNumero }));
+
   const { data, error } = await admin
     .from("raffles")
     .insert({
@@ -61,12 +85,13 @@ export async function createTestRaffle(
       nombre: `Test Raffle ${tag}`,
       estado: opts.estado ?? "activa",
       max_numero: maxNumero,
-      precio_por_numero: 200,
-      paquetes: [],
+      precio_por_numero: precioPorNumero,
+      paquetes,
       numeros_bendecidos: [],
-      sorteo_fecha: "15 OCT 2026",
-      nequi_numero: "3000000000",
-      nequi_nombre: "Test",
+      sorteo_fecha: opts.sorteoFecha ?? "15 OCT 2026",
+      nequi_numero: opts.nequiNumero ?? "3000000000",
+      nequi_nombre: opts.nequiNombre ?? "Test",
+      qr_url: opts.qrUrl ?? null,
     })
     .select("id, organization_id, max_numero")
     .single();

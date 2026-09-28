@@ -15,9 +15,12 @@ const SUBDOMAIN_PATTERN = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
 // requires a pool of at least 10 numbers so the default packages make sense.
 const MIN_MAX_NUMERO = 9;
 const MAX_MAX_NUMERO = 99_999;
-const MAX_PRICE = 10_000_000;
-const MAX_BLESSED = 50;
-const DEFAULT_PACKAGE_QUANTITIES = [10, 50, 100];
+// Exported: lib/raffle-config/validate.ts (post-onboarding edit form) reuses
+// these same limits/constants rather than duplicating them, per this file's
+// own "keep in sync" convention.
+export const MAX_PRICE = 10_000_000;
+export const MAX_BLESSED = 50;
+export const DEFAULT_PACKAGE_QUANTITIES = [10, 50, 100];
 
 export interface OnboardingInput {
   orgName: string;
@@ -55,12 +58,12 @@ export type OnboardingErrors = Partial<Record<OnboardingField, string>>;
 
 export type OnboardingResult = { ok: true; value: OnboardingValue } | { ok: false; errors: OnboardingErrors };
 
-function parseInteger(raw: string): number | null {
+export function parseInteger(raw: string): number | null {
   const trimmed = raw.trim();
   return /^\d+$/.test(trimmed) ? Number(trimmed) : null;
 }
 
-function requiredText(raw: string, max: number, message: string): { value?: string; error?: string } {
+export function requiredText(raw: string, max: number, message: string): { value?: string; error?: string } {
   const value = raw.trim();
   if (value.length === 0 || value.length > max) {
     return { error: message };

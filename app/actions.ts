@@ -6,20 +6,22 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendComprobanteRecibidoEmail } from "@/lib/email";
 import { resolveOrganizationByHost } from "@/lib/tenant/resolve";
 import { selectHomeView } from "@/lib/tenant/home-view";
-import { MAX_CUSTOM_QTY, MIN_CUSTOM_QTY, PAQUETES, type PaqueteTipo } from "@/lib/constants";
+import { MAX_CUSTOM_QTY, MIN_CUSTOM_QTY, type PaqueteTipo } from "@/lib/constants";
+import { hasValidImageSignature } from "@/lib/storage/image-signature";
 
 export type ReservationState =
   | { status: "idle" }
   | { status: "error"; error: string }
   | { status: "success"; cantidad: number };
 
-const PACKAGE_QUANTITIES = Object.fromEntries(
-  PAQUETES.map((p) => [p.tipo, p.qty])
-) as Record<Exclude<PaqueteTipo, "custom">, number>;
-
 interface ReservarNumerosRow {
   reserva_id: string;
   numeros_asignados: number[];
+}
+
+interface RafflePaquete {
+  tipo: string;
+  qty: number;
 }
 
 const MAX_COMPROBANTE_BYTES = 8 * 1024 * 1024;
@@ -31,29 +33,6 @@ const MARKETING_HOST_MESSAGE =
   "Esta es una demo: no se pueden hacer reservas reales aquí. Entra a la página de una rifa para comprar.";
 
 const INVALID_IMAGE_MESSAGE ="El comprobante debe ser una imagen.";
-
-/**
- * Inspects the first bytes of a file for known image format signatures.
- * The client-supplied MIME type (`File.type`) is trivially spoofable, so this
- * is the real gate before the file is stored.
- */
-function hasValidImageSignature(buffer: ArrayBuffer): boolean {
-  const bytes = new Uint8Array(buffer);
-  if (bytes.length < 12) return false;
-
-  // JPEG: FF D8 FF
-  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return true;
-
-  // PNG: 89 50 4E 47
-  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return true;
-
-  // WebP: 'RIFF' .... 'WEBP'
-  const asciiSlice = (start: number, end: number) =>
-    String.fromCharCode(...bytes.slice(start, end));
-  if (asciiSlice(0, 4) === "RIFF" && asciiSlice(8, 12) === "WEBP") return true;
-
-  return false;
-}
 
 export async function submitReservation(
   _prevState: ReservationState,
@@ -83,15 +62,6 @@ export async function submitReservation(
 
   if (!comprobante.type.startsWith("image/")) {
     return { status: "error", error: INVALID_IMAGE_MESSAGE };
-  }
-
-  const cantidadValida =
-    paqueteTipo === "custom"
-      ? Number.isInteger(cantidad) && cantidad >= MIN_CUSTOM_QTY && cantidad <= MAX_CUSTOM_QTY
-      : PACKAGE_QUANTITIES[paqueteTipo] === cantidad;
-
-  if (!cantidadValida) {
-    return { status: "error", error: "La cantidad seleccionada no es válida." };
   }
 
   // Host-based tenant resolution (design D6, same pattern as app/page.tsx /
@@ -133,7 +103,7 @@ export async function submitReservation(
   {
     const { data: raffle, error: raffleError } = await supabase
       .from("raffles")
-      .select("id")
+      .select("id, paquetes")
       .eq("organization_id", organizationId)
       .eq("estado", "activa")
       .maybeSingle();
@@ -147,7 +117,37 @@ export async function submitReservation(
       return { status: "error", error: "Esta rifa no está disponible en este momento." };
     }
 
-    raffleId = (raffle as { id: string }).id;
+    const row = raffle as { id: string; paquetes: RafflePaquete[] | null };
+    raffleId = row.id;
+
+    // Defense in depth for the jsonb column: both write paths
+    // (crear_organizacion_con_rifa, actualizar_rifa) always persist an array,
+    // but this guards against a malformed/corrupted value reaching .map()
+    // uncaught (this runs before the function's own try/catch) instead of
+    // failing the same clean way as "no active raffle" below.
+    if (!Array.isArray(row.paquetes) || row.paquetes.length === 0) {
+      console.error("[reserva] raffle has no usable paquetes", { organizationId, raffleId: row.id });
+      return { status: "error", error: "Esta rifa no está disponible en este momento." };
+    }
+
+    // Package quantities are this tenant's own paquetes (raffles.paquetes),
+    // never the legacy global PAQUETES constant -- every raffle beyond
+    // Wilbermakia has its own tipo/qty pairs (see
+    // lib/onboarding/validate.ts's DEFAULT_PACKAGE_QUANTITIES), so validating
+    // against a different tenant's fixed quantities would silently reject
+    // every real, correctly-priced submission for this raffle.
+    const packageQuantities: Record<string, number> = Object.fromEntries(
+      row.paquetes.map((p) => [p.tipo, p.qty])
+    );
+
+    const cantidadValida =
+      paqueteTipo === "custom"
+        ? Number.isInteger(cantidad) && cantidad >= MIN_CUSTOM_QTY && cantidad <= MAX_CUSTOM_QTY
+        : packageQuantities[paqueteTipo] === cantidad;
+
+    if (!cantidadValida) {
+      return { status: "error", error: "La cantidad seleccionada no es válida." };
+    }
   }
 
   // Read the file bytes once and reuse them for both the signature check and

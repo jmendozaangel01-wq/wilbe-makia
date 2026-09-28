@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { PRICE_PER_NUMBER, SORTEO_FECHA } from "@/lib/constants";
 
 interface HeroProps {
   /** Organization display name (design tenant-branding domain). Used as the
@@ -10,9 +9,15 @@ interface HeroProps {
   /** Heading element for the title. The marketing page embeds this hero as a
    * demo below its own <h1>, so it passes "h2" there. Defaults to "h1". */
   headingAs?: "h1" | "h2";
+  /** raffles.precio_por_numero for the resolved tenant. Omitted when no
+   * raffle could be resolved: the price block is then hidden rather than
+   * falling back to the platform owner's own legacy constant. */
+  pricePerNumber?: number;
+  /** raffles.sorteo_fecha for the resolved tenant, same omit-and-hide rule. */
+  sorteoFecha?: string;
 }
 
-export default function Hero({ orgName, logoUrl, headingAs: Heading = "h1" }: HeroProps) {
+export default function Hero({ orgName, logoUrl, headingAs: Heading = "h1", pricePerNumber, sorteoFecha }: HeroProps) {
   return (
     <div className="relative bg-charcoal px-6 py-16 sm:px-10 flex flex-col items-center gap-9">
       <div className="max-w-[640px] flex flex-col items-center gap-[18px] text-center">
@@ -38,17 +43,19 @@ export default function Hero({ orgName, logoUrl, headingAs: Heading = "h1" }: He
           <span className="whitespace-nowrap">0-KM</span>
         </Heading>
 
-        <div className="flex items-center gap-7 flex-wrap justify-center mt-1.5">
-          <div>
-            <div className="text-xs tracking-[1.5px] text-gray uppercase">Sorteo</div>
-            <div className="font-display text-[22px] text-gold">{SORTEO_FECHA}</div>
+        {sorteoFecha !== undefined && pricePerNumber !== undefined && (
+          <div className="flex items-center gap-7 flex-wrap justify-center mt-1.5">
+            <div>
+              <div className="text-xs tracking-[1.5px] text-gray uppercase">Sorteo</div>
+              <div className="font-display text-[22px] text-gold">{sorteoFecha}</div>
+            </div>
+            <div className="w-px h-8 bg-border" />
+            <div>
+              <div className="text-xs tracking-[1.5px] text-gray uppercase">Precio por número</div>
+              <div className="font-display text-[22px] text-gold">${pricePerNumber}</div>
+            </div>
           </div>
-          <div className="w-px h-8 bg-border" />
-          <div>
-            <div className="text-xs tracking-[1.5px] text-gray uppercase">Precio por número</div>
-            <div className="font-display text-[22px] text-gold">${PRICE_PER_NUMBER}</div>
-          </div>
-        </div>
+        )}
 
         <a
           href="#paquetes"
