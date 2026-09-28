@@ -119,6 +119,8 @@ export default async function AdminPage() {
       logoUrl={org?.logoUrl ?? null}
       qrUrl={raffle?.qr_url ?? null}
       raffleUrl={org && host ? buildTenantAdminUrl(org.subdomain, host, "/") : null}
+      blessedNumbers={raffle?.numeros_bendecidos ?? []}
+      raffleId={context.raffleId ?? null}
     />
   );
 }

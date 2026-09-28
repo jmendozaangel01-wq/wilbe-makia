@@ -28,24 +28,6 @@ export const PAQUETES: Paquete[] = [
   { tipo: "paquete_120", qty: 120, priceLabel: "24.000", price: 24000, popular: false },
 ];
 
-export const BLESSED_NUMBERS = [
-  "07734",
-  "12583",
-  "29461",
-  "33780",
-  "41256",
-  "50912",
-  "62347",
-  "70594",
-  "81023",
-  "92468",
-  "10357",
-  "23689",
-  "34781",
-  "45902",
-  "56134",
-];
-
 export function formatCOP(amount: number): string {
   return new Intl.NumberFormat("es-CO").format(amount);
 }
@@ -56,7 +38,7 @@ export function clampCustomQty(value: number, fallback: number = MIN_CUSTOM_QTY)
 
 // Raffle numbers are stored as plain integers (0-99999) — padding is a display-only
 // concern. Use this whenever a raffle number is shown to a person (e.g. the
-// payment-confirmed email, an admin view), matching the BLESSED_NUMBERS format above.
+// payment-confirmed email, an admin view).
 export function formatNumero(numero: number): string {
   return numero.toString().padStart(5, "0");
 }

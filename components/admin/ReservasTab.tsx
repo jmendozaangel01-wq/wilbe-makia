@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { BLESSED_NUMBERS, PRICE_PER_NUMBER, formatCOP, formatNumero } from "@/lib/constants";
+import { PRICE_PER_NUMBER, formatCOP, formatNumero } from "@/lib/constants";
 import { confirmarPago, editarNumero, getComprobanteUrl, reasignarNumeros, rechazarReserva } from "@/app/admin/actions";
 import type { Reserva, ReservaEstado } from "./AdminDashboard";
 
@@ -19,6 +19,8 @@ interface ReservasTabProps {
   onSelectReserva: (id: string) => void;
   onCloseDetail: () => void;
   onChanged: () => Promise<void>;
+  /** The raffle's own blessed numbers (raffles.numeros_bendecidos). */
+  blessedNumbers: number[];
 }
 
 export default function ReservasTab({
@@ -27,6 +29,7 @@ export default function ReservasTab({
   onSelectReserva,
   onCloseDetail,
   onChanged,
+  blessedNumbers,
 }: ReservasTabProps) {
   const selected = reservas.find((r) => r.id === selectedReservaId) ?? null;
 
@@ -143,6 +146,7 @@ export default function ReservasTab({
       reserva={selected}
       onCloseDetail={onCloseDetail}
       onChanged={onChanged}
+      blessedNumbers={blessedNumbers}
     />
   );
 }
@@ -151,9 +155,11 @@ interface ReservaDetailProps {
   reserva: Reserva;
   onCloseDetail: () => void;
   onChanged: () => Promise<void>;
+  blessedNumbers: number[];
 }
 
-function ReservaDetail({ reserva, onCloseDetail, onChanged }: ReservaDetailProps) {
+function ReservaDetail({ reserva, onCloseDetail, onChanged, blessedNumbers }: ReservaDetailProps) {
+  const blessedDisplays = new Set(blessedNumbers.map(formatNumero));
   const meta = STATUS_META[reserva.estado];
   const qty = reserva.numeros_asignados.length;
   const price = qty * PRICE_PER_NUMBER;
@@ -373,7 +379,7 @@ function ReservaDetail({ reserva, onCloseDetail, onChanged }: ReservaDetailProps
           <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
             {reserva.numeros_asignados.map((n, i) => {
               const display = formatNumero(n);
-              const blessed = BLESSED_NUMBERS.includes(display);
+              const blessed = blessedDisplays.has(display);
               return (
                 <div
                   key={`${n}-${i}`}

@@ -54,6 +54,10 @@ interface AdminDashboardProps {
   qrUrl: string | null;
   /** Public raffle page for this tenant, null when the host can't be mapped to one. */
   raffleUrl: string | null;
+  /** The raffle's own blessed numbers (raffles.numeros_bendecidos), [] when there is no raffle. */
+  blessedNumbers: number[];
+  /** Active raffle id from AdminContext, null when there is no borrador/activa raffle. */
+  raffleId: string | null;
 }
 
 export default function AdminDashboard({
@@ -65,6 +69,8 @@ export default function AdminDashboard({
   logoUrl,
   qrUrl,
   raffleUrl,
+  blessedNumbers,
+  raffleId,
 }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>("reservas");
   const [reservas, setReservas] = useState<Reserva[]>(initialReservas);
@@ -226,9 +232,16 @@ export default function AdminDashboard({
           onSelectReserva={setSelectedReservaId}
           onCloseDetail={() => setSelectedReservaId(null)}
           onChanged={refetchReservas}
+          blessedNumbers={blessedNumbers}
         />
       ) : activeTab === "numeros" ? (
-        <NumerosTab initialCounts={initialCounts} changeTick={changeTick} onViewReserva={goToReserva} />
+        <NumerosTab
+          initialCounts={initialCounts}
+          changeTick={changeTick}
+          onViewReserva={goToReserva}
+          blessedNumbers={blessedNumbers}
+          raffleId={raffleId}
+        />
       ) : (
         <ConfiguracionTab raffle={raffleConfig} logoUrl={logoUrl} qrUrl={qrUrl} raffleUrl={raffleUrl} />
       )}
