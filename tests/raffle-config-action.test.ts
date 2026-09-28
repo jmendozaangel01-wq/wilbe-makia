@@ -89,6 +89,7 @@ describe("updateRaffleConfig", () => {
     const fd = new FormData();
     const fields: Record<string, string> = {
       raffleName: "Rifa actualizada",
+      premioNombre: "Gánate dos motos NKD 125",
       precioPorNumero: "500",
       sorteoFecha: "20 NOV 2026",
       nequiNumero: "3009998888",
@@ -292,6 +293,113 @@ describe("updateRaffleConfig", () => {
 
     const { data: org2 } = await admin.from("organizations").select("logo_url").eq("id", org.id).single();
     expect(org2!.logo_url).toBeNull();
+  });
+
+  it("saves the prize title and keeps premio_imagen_url untouched with no file, echoing it back for display", async () => {
+    const { org, raffle, user } = await setup("save-premio-keep");
+    await admin.from("raffles").update({ premio_imagen_url: "https://example.com/keep-premio.png" }).eq("id", raffle.id);
+    activate(org, user);
+
+    const result = await updateRaffleConfig({ status: "idle" }, form());
+    expect(result.status).toBe("success");
+    if (result.status === "success") {
+      expect(result.premioImagenUrl).toBe("https://example.com/keep-premio.png");
+    }
+
+    const { data: row } = await admin.from("raffles").select("premio_nombre, premio_imagen_url").eq("id", raffle.id).single();
+    expect(row).toEqual({
+      premio_nombre: "Gánate dos motos NKD 125",
+      premio_imagen_url: "https://example.com/keep-premio.png",
+    });
+  });
+
+  it("returns a field error for a blank prize title without calling the RPC", async () => {
+    const { org, raffle, user } = await setup("save-premio-blank");
+    activate(org, user);
+
+    const result = await updateRaffleConfig({ status: "idle" }, form({ premioNombre: "   " }));
+    expect(result.status).toBe("error");
+    if (result.status === "error") expect(result.fieldErrors.premioNombre).toBeDefined();
+
+    const { data: row } = await admin.from("raffles").select("premio_nombre").eq("id", raffle.id).single();
+    expect(row!.premio_nombre).toBe(`Test Prize save-premio-blank`);
+  });
+
+  it("uploads a valid prize photo under <orgId>/premio-*, persists its public URL, and leaves logo/QR alone", async () => {
+    const { org, raffle, user } = await setup("save-premio");
+    activate(org, user);
+
+    const fd = form();
+    const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0]);
+    fd.set("premio", new File([pngBytes], "premio.png", { type: "image/png" }));
+
+    const result = await updateRaffleConfig({ status: "idle" }, fd);
+    expect(result.status).toBe("success");
+    if (result.status === "success") {
+      expect(result.premioImagenUrl).toContain(`/storage/v1/object/public/logos/${org.id}/premio-`);
+      expect(result.premioImagenUrl).toMatch(/\.png$/);
+      expect(result.logoUrl).toBeNull();
+      expect(result.qrUrl).toBeNull();
+    }
+
+    const { data: row } = await admin.from("raffles").select("premio_imagen_url, qr_url").eq("id", raffle.id).single();
+    expect(row!.premio_imagen_url).toBe(result.status === "success" ? result.premioImagenUrl : undefined);
+    expect(row!.qr_url).toBeNull();
+
+    if (result.status === "success" && result.premioImagenUrl) {
+      await admin.storage.from("logos").remove([result.premioImagenUrl.split("/logos/")[1]]);
+    }
+  });
+
+  it("rejects a prize photo that isn't a real image and rolls back an already-uploaded QR from the same submit", async () => {
+    const { org, raffle, user } = await setup("save-bad-premio");
+    activate(org, user);
+
+    const fd = form();
+    const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0]);
+    fd.set("qr", new File([pngBytes], "qr.png", { type: "image/png" }));
+    fd.set("premio", new File([new Uint8Array([1, 2, 3, 4])], "premio.png", { type: "image/png" }));
+
+    const result = await updateRaffleConfig({ status: "idle" }, fd);
+    expect(result.status).toBe("error");
+
+    const { data: row } = await admin.from("raffles").select("qr_url, premio_imagen_url, premio_nombre").eq("id", raffle.id).single();
+    expect(row!.qr_url).toBeNull();
+    expect(row!.premio_imagen_url).toBeNull();
+    expect(row!.premio_nombre).not.toBe("Gánate dos motos NKD 125");
+
+    const { data: files } = await admin.storage.from("logos").list(org.id);
+    expect(files ?? []).toEqual([]);
+  });
+
+  it("removes the uploaded prize photo when the actualizar_rifa RPC fails", async () => {
+    const { org, raffle, user } = await setup("save-premio-rpc-fails");
+    activate(org, user);
+
+    const mockedAdmin = createAdminClient();
+    const realRpc = mockedAdmin.rpc.bind(mockedAdmin);
+    const rpcSpy = vi.spyOn(mockedAdmin, "rpc").mockImplementation(((fn: string, args?: Record<string, unknown>) => {
+      if (fn === "actualizar_rifa") {
+        return Promise.resolve({ data: null, error: { message: "simulated rpc failure" } });
+      }
+      return realRpc(fn, args);
+    }) as unknown as typeof mockedAdmin.rpc);
+
+    const fd = form();
+    const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0]);
+    fd.set("premio", new File([pngBytes], "premio.png", { type: "image/png" }));
+
+    try {
+      const result = await updateRaffleConfig({ status: "idle" }, fd);
+      expect(result.status).toBe("error");
+    } finally {
+      rpcSpy.mockRestore();
+    }
+
+    const { data: files } = await admin.storage.from("logos").list(org.id);
+    expect(files ?? []).toEqual([]);
+    const { data: row } = await admin.from("raffles").select("premio_imagen_url").eq("id", raffle.id).single();
+    expect(row!.premio_imagen_url).toBeNull();
   });
 
   it("fails closed instead of treating a failed organizations lookup as 'no existing logo'", async () => {

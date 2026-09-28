@@ -12,11 +12,18 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 export type RaffleConfigState =
   | { status: "idle" }
-  | { status: "success"; values: RaffleConfigInput; logoUrl: string | null; qrUrl: string | null }
+  | {
+      status: "success";
+      values: RaffleConfigInput;
+      logoUrl: string | null;
+      qrUrl: string | null;
+      premioImagenUrl: string | null;
+    }
   | { status: "error"; error?: string; fieldErrors: RaffleConfigErrors; values: RaffleConfigInput };
 
 const FIELDS: (keyof RaffleConfigInput)[] = [
   "raffleName",
+  "premioNombre",
   "precioPorNumero",
   "sorteoFecha",
   "nequiNumero",
@@ -41,12 +48,23 @@ type ImageUpload =
   | { kind: "uploaded"; url: string; path: string };
 
 /**
- * Shared logo/QR upload path: both are optional public images in the same
- * 'logos' bucket (see 0015_raffle_config_update.sql), validated the same
- * way -- byte-signature format/Content-Type (never the client-supplied
+ * Deletes whichever of the given uploads actually reached the bucket. Every
+ * failure branch below calls this with ALL the uploads made so far, so adding
+ * a fourth image means adding one argument per branch, not a new cleanup.
+ */
+async function removeUploaded(supabase: ReturnType<typeof createAdminClient>, ...uploads: ImageUpload[]) {
+  const paths = uploads.flatMap((u) => (u.kind === "uploaded" ? [u.path] : []));
+  if (paths.length > 0) await supabase.storage.from("logos").remove(paths);
+}
+
+/**
+ * Shared logo/QR/prize-photo upload path: all are optional public images in
+ * the same 'logos' bucket (see 0015_raffle_config_update.sql), validated the
+ * same way -- byte-signature format/Content-Type (never the client-supplied
  * File.name/File.type; this bucket is public, see the risk review this batch
  * followed up on) and a size cap. `pathPrefix` (e.g. "<orgId>/logo" vs
- * "<orgId>/qr") is what keeps the two kinds from colliding in the bucket.
+ * "<orgId>/qr" vs "<orgId>/premio") is what keeps the kinds from colliding
+ * in the bucket.
  */
 async function uploadPublicImage(
   supabase: ReturnType<typeof createAdminClient>,
@@ -118,7 +136,7 @@ export async function updateRaffleConfig(_prev: RaffleConfigState, formData: For
   const [raffleResult, orgResult] = await Promise.all([
     supabase
       .from("raffles")
-      .select("max_numero, qr_url")
+      .select("max_numero, qr_url, premio_imagen_url")
       .eq("id", context.raffleId)
       .eq("organization_id", context.organizationId)
       .single(),
@@ -139,7 +157,11 @@ export async function updateRaffleConfig(_prev: RaffleConfigState, formData: For
     return { status: "error", error: GENERIC_ERROR_MESSAGE, fieldErrors: {}, values };
   }
 
-  const { max_numero: maxNumero, qr_url: existingQrUrl } = raffle as { max_numero: number; qr_url: string | null };
+  const {
+    max_numero: maxNumero,
+    qr_url: existingQrUrl,
+    premio_imagen_url: existingPremioImagenUrl,
+  } = raffle as { max_numero: number; qr_url: string | null; premio_imagen_url: string | null };
   const existingLogoUrl = (orgResult.data as { logo_url: string | null } | null)?.logo_url ?? null;
 
   const validated = validateRaffleConfigInput(values, maxNumero);
@@ -165,17 +187,29 @@ export async function updateRaffleConfig(_prev: RaffleConfigState, formData: For
     "El QR debe ser una imagen (JPG, PNG o WebP)."
   );
   if (qrUpload.kind === "error") {
-    if (logoUpload.kind === "uploaded") await supabase.storage.from("logos").remove([logoUpload.path]);
+    await removeUploaded(supabase, logoUpload);
     return { status: "error", error: qrUpload.message, fieldErrors: {}, values };
   }
 
-  // actualizar_rifa() only touches logo_url/qr_url when given a non-null
-  // value, so an untouched field must pass null -- but the state this
-  // function returns to the form is a DISPLAY value, which should keep
-  // showing whatever is actually persisted (existing*Url) rather than
+  const premioUpload = await uploadPublicImage(
+    supabase,
+    formData.get("premio"),
+    `${context.organizationId}/premio`,
+    "La foto del premio debe ser una imagen (JPG, PNG o WebP)."
+  );
+  if (premioUpload.kind === "error") {
+    await removeUploaded(supabase, logoUpload, qrUpload);
+    return { status: "error", error: premioUpload.message, fieldErrors: {}, values };
+  }
+
+  // actualizar_rifa() only touches logo_url/qr_url/premio_imagen_url when
+  // given a non-null value, so an untouched field must pass null -- but the
+  // state this function returns to the form is a DISPLAY value, which should
+  // keep showing whatever is actually persisted (existing*Url) rather than
   // going blank just because this particular submit didn't re-upload it.
   const logoUrl = logoUpload.kind === "uploaded" ? logoUpload.url : existingLogoUrl;
   const qrUrl = qrUpload.kind === "uploaded" ? qrUpload.url : existingQrUrl;
+  const premioImagenUrl = premioUpload.kind === "uploaded" ? premioUpload.url : existingPremioImagenUrl;
 
   const v = validated.value;
   const { error } = await supabase.rpc("actualizar_rifa", {
@@ -190,16 +224,15 @@ export async function updateRaffleConfig(_prev: RaffleConfigState, formData: For
     p_nequi_nombre: v.nequiNombre,
     p_logo_url: logoUpload.kind === "uploaded" ? logoUpload.url : null,
     p_qr_url: qrUpload.kind === "uploaded" ? qrUpload.url : null,
+    p_premio_nombre: v.premioNombre,
+    p_premio_imagen_url: premioUpload.kind === "uploaded" ? premioUpload.url : null,
   });
 
   if (error) {
     // The uploads already succeeded -- clean up any orphaned file(s) since the
     // config save itself failed, matching app/actions.ts's rollback pattern
     // for the comprobante upload.
-    const orphaned = [logoUpload, qrUpload]
-      .filter((u): u is Extract<ImageUpload, { kind: "uploaded" }> => u.kind === "uploaded")
-      .map((u) => u.path);
-    if (orphaned.length > 0) await supabase.storage.from("logos").remove(orphaned);
+    await removeUploaded(supabase, logoUpload, qrUpload, premioUpload);
 
     console.error("[admin] actualizar_rifa failed", { error: error.message });
     return { status: "error", error: rpcErrorMessage(GENERIC_ERROR_MESSAGE, error), fieldErrors: {}, values };
@@ -210,5 +243,5 @@ export async function updateRaffleConfig(_prev: RaffleConfigState, formData: For
   // until a manual reload.
   revalidatePath("/admin");
 
-  return { status: "success", values, logoUrl, qrUrl };
+  return { status: "success", values, logoUrl, qrUrl, premioImagenUrl };
 }

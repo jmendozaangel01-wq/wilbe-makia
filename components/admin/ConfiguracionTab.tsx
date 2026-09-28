@@ -6,6 +6,7 @@ import type { RaffleConfigField, RaffleConfigInput } from "@/lib/raffle-config/v
 
 export interface RaffleConfigData {
   raffleName: string;
+  premioNombre: string;
   maxNumero: number;
   precioPorNumero: string;
   sorteoFecha: string;
@@ -18,6 +19,8 @@ interface ConfiguracionTabProps {
   raffle: RaffleConfigData | null;
   logoUrl: string | null;
   qrUrl: string | null;
+  /** raffles.premio_imagen_url, null when the raffle has no prize photo. */
+  premioImagenUrl: string | null;
   /** Public page buyers see for this tenant's raffle, or null when unknown. */
   raffleUrl: string | null;
 }
@@ -96,7 +99,7 @@ function Field({ name, label, hint, defaultValue, error, inputMode, placeholder,
 }
 
 interface ImageUploadFieldProps {
-  name: "logo" | "qr";
+  name: "logo" | "qr" | "premio";
   label: string;
   hint?: string;
   currentUrl: string | null;
@@ -179,10 +182,11 @@ function ImageUploadField({ name, label, hint, currentUrl, emptyLabel, buttonLab
 
 const INITIAL_STATE: RaffleConfigState = { status: "idle" };
 
-export default function ConfiguracionTab({ raffle, logoUrl, qrUrl, raffleUrl }: ConfiguracionTabProps) {
+export default function ConfiguracionTab({ raffle, logoUrl, qrUrl, premioImagenUrl, raffleUrl }: ConfiguracionTabProps) {
   const [state, formAction, pending] = useActionState(updateRaffleConfig, INITIAL_STATE);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [qrPreview, setQrPreview] = useState<string | null>(null);
+  const [premioPreview, setPremioPreview] = useState<string | null>(null);
 
   if (!raffle) {
     return (
@@ -199,6 +203,7 @@ export default function ConfiguracionTab({ raffle, logoUrl, qrUrl, raffleUrl }: 
       ? state.values
       : {
           raffleName: raffle.raffleName,
+          premioNombre: raffle.premioNombre,
           precioPorNumero: raffle.precioPorNumero,
           sorteoFecha: raffle.sorteoFecha,
           nequiNumero: raffle.nequiNumero,
@@ -208,6 +213,7 @@ export default function ConfiguracionTab({ raffle, logoUrl, qrUrl, raffleUrl }: 
   const errors = state.status === "error" ? state.fieldErrors : {};
   const displayedLogo = logoPreview ?? (state.status === "success" ? state.logoUrl : logoUrl);
   const displayedQr = qrPreview ?? (state.status === "success" ? state.qrUrl : qrUrl);
+  const displayedPremio = premioPreview ?? (state.status === "success" ? state.premioImagenUrl : premioImagenUrl);
 
   function handleLogoChange(file: File | null) {
     setLogoPreview(file ? URL.createObjectURL(file) : null);
@@ -215,6 +221,10 @@ export default function ConfiguracionTab({ raffle, logoUrl, qrUrl, raffleUrl }: 
 
   function handleQrChange(file: File | null) {
     setQrPreview(file ? URL.createObjectURL(file) : null);
+  }
+
+  function handlePremioChange(file: File | null) {
+    setPremioPreview(file ? URL.createObjectURL(file) : null);
   }
 
   return (
@@ -264,6 +274,26 @@ export default function ConfiguracionTab({ raffle, logoUrl, qrUrl, raffleUrl }: 
       />
 
       <Field name="raffleName" label="Nombre de la rifa" defaultValue={values.raffleName} error={errors.raffleName} maxLength={80} />
+
+      <Field
+        name="premioNombre"
+        label="Título de la rifa"
+        hint="Ejemplo: Gánate una moto XTZ 660 0-KM"
+        defaultValue={values.premioNombre}
+        error={errors.premioNombre}
+        maxLength={120}
+      />
+
+      <ImageUploadField
+        name="premio"
+        label="Foto del premio (opcional)"
+        hint="Se muestra en la portada de tu rifa. Si no subes ninguna, la portada va sin imagen."
+        emptyLabel="Sin foto del premio"
+        buttonLabel="Subir foto"
+        previewAlt="Foto actual del premio"
+        currentUrl={displayedPremio}
+        onFileChange={handlePremioChange}
+      />
 
       <label style={labelStyle}>
         Número máximo

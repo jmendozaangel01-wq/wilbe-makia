@@ -5,6 +5,7 @@ const MAX_NUMERO = 999;
 
 const valid: RaffleConfigInput = {
   raffleName: "Grand Raffle",
+  premioNombre: "Gánate una moto XTZ 660 0-KM",
   precioPorNumero: "200",
   sorteoFecha: "15 OCT 2026",
   nequiNumero: "3001234567",
@@ -51,6 +52,21 @@ describe("validateRaffleConfigInput", () => {
     const result = validateRaffleConfigInput({ ...valid, raffleName: "  " }, MAX_NUMERO);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors.raffleName).toBeDefined();
+  });
+
+  it("keeps the prize title exactly as typed, trimmed", () => {
+    const result = validateRaffleConfigInput({ ...valid, premioNombre: "  Dos motos NKD 125  " }, MAX_NUMERO);
+    expect(result.ok && result.value.premioNombre).toBe("Dos motos NKD 125");
+  });
+
+  it.each(["", "   ", "x".repeat(121)])("rejects an empty or over-long prize title %j", (premioNombre) => {
+    const result = validateRaffleConfigInput({ ...valid, premioNombre }, MAX_NUMERO);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.premioNombre).toBeDefined();
+  });
+
+  it("accepts a prize title of exactly 120 characters", () => {
+    expect(validateRaffleConfigInput({ ...valid, premioNombre: "x".repeat(120) }, MAX_NUMERO).ok).toBe(true);
   });
 
   it("rejects a price of zero or below", () => {
