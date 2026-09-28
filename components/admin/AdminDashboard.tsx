@@ -52,6 +52,8 @@ interface AdminDashboardProps {
   logoUrl: string | null;
   /** raffles.qr_url, null when unset (product/tenant-admin-raffle-config). */
   qrUrl: string | null;
+  /** Public raffle page for this tenant, null when the host can't be mapped to one. */
+  raffleUrl: string | null;
 }
 
 export default function AdminDashboard({
@@ -62,6 +64,7 @@ export default function AdminDashboard({
   raffleConfig,
   logoUrl,
   qrUrl,
+  raffleUrl,
 }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>("reservas");
   const [reservas, setReservas] = useState<Reserva[]>(initialReservas);
@@ -227,7 +230,7 @@ export default function AdminDashboard({
       ) : activeTab === "numeros" ? (
         <NumerosTab initialCounts={initialCounts} changeTick={changeTick} onViewReserva={goToReserva} />
       ) : (
-        <ConfiguracionTab raffle={raffleConfig} logoUrl={logoUrl} qrUrl={qrUrl} />
+        <ConfiguracionTab raffle={raffleConfig} logoUrl={logoUrl} qrUrl={qrUrl} raffleUrl={raffleUrl} />
       )}
     </div>
   );

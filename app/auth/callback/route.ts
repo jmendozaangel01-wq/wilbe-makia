@@ -10,8 +10,10 @@ import { isPasswordResetNext, PASSWORD_RESET_PATH } from "@/lib/onboarding/routi
  * routes:
  * - `next` is exactly the password-reset path -> straight to the reset screen
  *   (a recovery session must not be diverted by membership routing);
- * - otherwise by membership: no organization yet -> /onboarding (this is also
- *   where a freshly confirmed email sign-up lands), else the tenant admin.
+ * - otherwise by membership: no organization yet -> /onboarding on the
+ *   platform (apex) host (this is also where a freshly confirmed email sign-up
+ *   lands), or the terminal no-access page on a tenant host; else the tenant
+ *   admin.
  * Any other `next` is sanitized (safeNextPath) inside
  * resolvePostAuthDestination so the callback is never an open redirect.
  */
