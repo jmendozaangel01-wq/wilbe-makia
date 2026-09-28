@@ -18,6 +18,8 @@ interface ConfiguracionTabProps {
   raffle: RaffleConfigData | null;
   logoUrl: string | null;
   qrUrl: string | null;
+  /** Public page buyers see for this tenant's raffle, or null when unknown. */
+  raffleUrl: string | null;
 }
 
 // Visually hidden but still focusable/clickable by assistive tech and by the
@@ -177,7 +179,7 @@ function ImageUploadField({ name, label, hint, currentUrl, emptyLabel, buttonLab
 
 const INITIAL_STATE: RaffleConfigState = { status: "idle" };
 
-export default function ConfiguracionTab({ raffle, logoUrl, qrUrl }: ConfiguracionTabProps) {
+export default function ConfiguracionTab({ raffle, logoUrl, qrUrl, raffleUrl }: ConfiguracionTabProps) {
   const [state, formAction, pending] = useActionState(updateRaffleConfig, INITIAL_STATE);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [qrPreview, setQrPreview] = useState<string | null>(null);
@@ -226,6 +228,31 @@ export default function ConfiguracionTab({ raffle, logoUrl, qrUrl }: Configuraci
         gap: "18px",
       }}
     >
+      {raffleUrl && (
+        <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
+          <a
+            href={raffleUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              background: "oklch(0.96 0.003 40)",
+              border: "1px solid oklch(0.85 0.005 40)",
+              borderRadius: "6px",
+              padding: "9px 14px",
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "oklch(0.32 0.01 40)",
+              textDecoration: "none",
+            }}
+          >
+            Ver mi rifa ↗
+          </a>
+          <span style={{ fontSize: "12px", color: "oklch(0.45 0.01 40)" }}>
+            Abre la página pública con los datos ya guardados.
+          </span>
+        </div>
+      )}
+
       <ImageUploadField
         name="logo"
         label="Logo de la rifa"

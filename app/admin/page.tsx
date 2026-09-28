@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAdminDeniedRedirect } from "@/lib/onboarding/admin-denied";
+import { buildTenantAdminUrl } from "@/lib/onboarding/routing";
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminContext, AdminContextError } from "@/lib/auth/admin-context";
@@ -117,6 +118,7 @@ export default async function AdminPage() {
       raffleConfig={raffleConfig}
       logoUrl={org?.logoUrl ?? null}
       qrUrl={raffle?.qr_url ?? null}
+      raffleUrl={org && host ? buildTenantAdminUrl(org.subdomain, host, "/") : null}
     />
   );
 }
