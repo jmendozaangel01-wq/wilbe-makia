@@ -47,6 +47,7 @@ function highlightedNumbers(blessedNumbers: number[]): string[] {
       onCloseDetail: () => {},
       onChanged: async () => {},
       blessedNumbers,
+      pricePerNumber: 1000,
     })
   );
   return [...html.matchAll(/Número bendecido">★<\/span><span>(\d{5})<\/span>/g)].map((m) => m[1]);
