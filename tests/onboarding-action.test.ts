@@ -63,6 +63,7 @@ function form(subdomain: string, overrides: Record<string, string> = {}): FormDa
     orgName: "Action Org",
     subdomain,
     raffleName: "Action Raffle",
+    premioNombre: "Gánate una moto de prueba",
     maxNumero: "99",
     precioPorNumero: "200",
     sorteoFecha: "15 OCT 2026",
@@ -101,8 +102,10 @@ describe("createOrganizationAction", () => {
     expect(result.redirect).toBe(`https://${subdomain}.benditarifa.com/admin`);
 
     const { data: org } = await admin.from("organizations").select("id").eq("subdomain", subdomain).single();
-    const { data: raffle } = await admin.from("raffles").select("estado, nombre").eq("organization_id", org!.id);
-    expect(raffle).toEqual([{ estado: "activa", nombre: "Action Raffle" }]);
+    const { data: raffle } = await admin.from("raffles").select("estado, nombre, premio_nombre, premio_imagen_url").eq("organization_id", org!.id);
+    expect(raffle).toEqual([
+      { estado: "activa", nombre: "Action Raffle", premio_nombre: "Gánate una moto de prueba", premio_imagen_url: null },
+    ]);
   });
 
   it("returns field errors for invalid input without calling the database", async () => {

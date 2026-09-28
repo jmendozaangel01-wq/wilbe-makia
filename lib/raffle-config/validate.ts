@@ -3,6 +3,8 @@ import {
   requiredText,
   MAX_PRICE,
   MAX_BLESSED,
+  MAX_PREMIO_NOMBRE,
+  PREMIO_NOMBRE_ERROR,
   DEFAULT_PACKAGE_QUANTITIES,
   type OnboardingPaquete,
 } from "../onboarding/validate";
@@ -23,6 +25,7 @@ import {
 
 export interface RaffleConfigInput {
   raffleName: string;
+  premioNombre: string;
   precioPorNumero: string;
   sorteoFecha: string;
   nequiNumero: string;
@@ -32,6 +35,7 @@ export interface RaffleConfigInput {
 
 export interface RaffleConfigValue {
   raffleName: string;
+  premioNombre: string;
   precioPorNumero: number;
   paquetes: OnboardingPaquete[];
   numerosBendecidos: number[];
@@ -57,6 +61,9 @@ export function validateRaffleConfigInput(input: RaffleConfigInput, maxNumero: n
 
   const raffleName = requiredText(input.raffleName, 80, "Ingresa el nombre de la rifa (máximo 80 caracteres).");
   if (raffleName.error) errors.raffleName = raffleName.error;
+
+  const premioNombre = requiredText(input.premioNombre, MAX_PREMIO_NOMBRE, PREMIO_NOMBRE_ERROR);
+  if (premioNombre.error) errors.premioNombre = premioNombre.error;
 
   const precio = parseInteger(input.precioPorNumero);
   if (precio === null || precio < 1 || precio > MAX_PRICE) {
@@ -102,6 +109,7 @@ export function validateRaffleConfigInput(input: RaffleConfigInput, maxNumero: n
     ok: true,
     value: {
       raffleName: raffleName.value!,
+      premioNombre: premioNombre.value!,
       precioPorNumero: precio!,
       paquetes,
       numerosBendecidos,

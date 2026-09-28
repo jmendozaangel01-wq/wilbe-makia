@@ -5,6 +5,7 @@ const valid: OnboardingInput = {
   orgName: "Acme Raffles",
   subdomain: "Acme-Raffles",
   raffleName: "Grand Raffle",
+  premioNombre: "Gánate una moto XTZ 660 0-KM",
   maxNumero: "999",
   precioPorNumero: "200",
   sorteoFecha: "15 OCT 2026",
@@ -70,6 +71,21 @@ describe("validateOnboardingInput", () => {
   it("de-duplicates blessed numbers", () => {
     const result = validateOnboardingInput({ ...valid, numerosBendecidos: "7,7,8" });
     expect(result.ok && result.value.numerosBendecidos).toEqual([7, 8]);
+  });
+
+  it("keeps the prize title exactly as typed, trimmed", () => {
+    const result = validateOnboardingInput({ ...valid, premioNombre: "  Dos motos NKD 125  " });
+    expect(result.ok && result.value.premioNombre).toBe("Dos motos NKD 125");
+  });
+
+  it.each(["", "   ", "x".repeat(121)])("rejects an empty or over-long prize title %j", (premioNombre) => {
+    const result = validateOnboardingInput({ ...valid, premioNombre });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.premioNombre).toBeDefined();
+  });
+
+  it("accepts a prize title of exactly 120 characters", () => {
+    expect(validateOnboardingInput({ ...valid, premioNombre: "x".repeat(120) }).ok).toBe(true);
   });
 
   it("requires names, draw date and a 10-digit Nequi number", () => {

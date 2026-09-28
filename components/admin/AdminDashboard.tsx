@@ -52,6 +52,8 @@ interface AdminDashboardProps {
   logoUrl: string | null;
   /** raffles.qr_url, null when unset (product/tenant-admin-raffle-config). */
   qrUrl: string | null;
+  /** raffles.premio_imagen_url, null when the raffle has no prize photo. */
+  premioImagenUrl: string | null;
   /** Public raffle page for this tenant, null when the host can't be mapped to one. */
   raffleUrl: string | null;
   /** The raffle's own blessed numbers (raffles.numeros_bendecidos), [] when there is no raffle. */
@@ -70,6 +72,7 @@ export default function AdminDashboard({
   raffleConfig,
   logoUrl,
   qrUrl,
+  premioImagenUrl,
   raffleUrl,
   blessedNumbers,
   pricePerNumber,
@@ -247,7 +250,13 @@ export default function AdminDashboard({
           raffleId={raffleId}
         />
       ) : (
-        <ConfiguracionTab raffle={raffleConfig} logoUrl={logoUrl} qrUrl={qrUrl} raffleUrl={raffleUrl} />
+        <ConfiguracionTab
+          raffle={raffleConfig}
+          logoUrl={logoUrl}
+          qrUrl={qrUrl}
+          premioImagenUrl={premioImagenUrl}
+          raffleUrl={raffleUrl}
+        />
       )}
     </div>
   );

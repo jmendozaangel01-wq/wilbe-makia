@@ -66,6 +66,7 @@ export async function createTestRaffle(
     nequiNombre?: string;
     sorteoFecha?: string;
     qrUrl?: string | null;
+    premioNombre?: string;
   } = {}
 ): Promise<TestRaffle> {
   const maxNumero = opts.maxNumero ?? 49;
@@ -83,6 +84,8 @@ export async function createTestRaffle(
     .insert({
       organization_id: organizationId,
       nombre: `Test Raffle ${tag}`,
+      // premio_nombre is NOT NULL since 0018.
+      premio_nombre: opts.premioNombre ?? `Test Prize ${tag}`,
       estado: opts.estado ?? "activa",
       max_numero: maxNumero,
       precio_por_numero: precioPorNumero,

@@ -27,6 +27,7 @@ function args(subdomain: string, overrides: Record<string, unknown> = {}) {
     p_nombre: "Onboarding Org",
     p_subdomain: subdomain,
     p_raffle_nombre: "First Raffle",
+    p_premio_nombre: "Gánate una moto de prueba",
     p_max_numero: 99,
     p_precio_por_numero: 200,
     p_paquetes: [{ tipo: "paquete_10", qty: 10, price: 2000 }],
@@ -83,6 +84,8 @@ describe("crear_organizacion_con_rifa", () => {
     expect(raffle.organization_id).toBe(row.organization_id);
     expect(raffle.estado).toBe("activa");
     expect(raffle.max_numero).toBe(99);
+    expect(raffle.premio_nombre).toBe("Gánate una moto de prueba");
+    expect(raffle.premio_imagen_url).toBeNull();
 
     const { count } = await admin
       .from("numeros")
@@ -181,6 +184,8 @@ describe("crear_organizacion_con_rifa", () => {
     ["null organization name", { p_nombre: null }],
     ["empty raffle name", { p_raffle_nombre: "" }],
     ["raffle name over 80 chars", { p_raffle_nombre: "x".repeat(81) }],
+    ["blank prize title", { p_premio_nombre: "   " }],
+    ["prize title over 120 chars", { p_premio_nombre: "x".repeat(121) }],
     ["zero price", { p_precio_por_numero: 0 }],
     ["negative price", { p_precio_por_numero: -5 }],
     ["price above the cap", { p_precio_por_numero: 10_000_001 }],
@@ -224,6 +229,30 @@ describe("crear_organizacion_con_rifa", () => {
         p_nequi_nombre: "n".repeat(80),
         p_sorteo_fecha: "d".repeat(40),
       })
+    );
+    expect(error).toBeNull();
+  });
+
+  it("falls back to the raffle name as the prize title when p_premio_nombre is omitted (old callers)", async () => {
+    const user = await createAuthedUser("onb-noprize");
+    createdUserIds.push(user.userId);
+
+    const withoutPrize: Record<string, unknown> = args(sub("onb-noprize"));
+    delete withoutPrize.p_premio_nombre;
+    const { data, error } = await user.client.rpc("crear_organizacion_con_rifa", withoutPrize);
+    expect(error).toBeNull();
+    const row = (data as { raffle_id: string }[])[0];
+    const { data: raffle } = await admin.from("raffles").select("premio_nombre").eq("id", row.raffle_id).single();
+    expect(raffle?.premio_nombre).toBe("First Raffle");
+  });
+
+  it("accepts a prize title of exactly 120 characters", async () => {
+    const user = await createAuthedUser("onb-prize120");
+    createdUserIds.push(user.userId);
+
+    const { error } = await user.client.rpc(
+      "crear_organizacion_con_rifa",
+      args(sub("onb-prize120"), { p_premio_nombre: "x".repeat(120) })
     );
     expect(error).toBeNull();
   });

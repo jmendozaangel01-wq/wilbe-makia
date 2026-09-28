@@ -66,7 +66,9 @@ export default async function AdminPage() {
     context.raffleId
       ? admin
           .from("raffles")
-          .select("nombre, max_numero, precio_por_numero, sorteo_fecha, nequi_numero, nequi_nombre, numeros_bendecidos, qr_url")
+          .select(
+            "nombre, premio_nombre, premio_imagen_url, max_numero, precio_por_numero, sorteo_fecha, nequi_numero, nequi_nombre, numeros_bendecidos, qr_url"
+          )
           .eq("id", context.raffleId)
           .eq("organization_id", context.organizationId)
           .maybeSingle()
@@ -88,6 +90,8 @@ export default async function AdminPage() {
 
   const raffle = raffleRow.data as {
     nombre: string;
+    premio_nombre: string;
+    premio_imagen_url: string | null;
     max_numero: number;
     precio_por_numero: number;
     sorteo_fecha: string;
@@ -100,6 +104,7 @@ export default async function AdminPage() {
   const raffleConfig: RaffleConfigData | null = raffle
     ? {
         raffleName: raffle.nombre,
+        premioNombre: raffle.premio_nombre,
         maxNumero: raffle.max_numero,
         precioPorNumero: String(raffle.precio_por_numero),
         sorteoFecha: raffle.sorteo_fecha,
@@ -118,6 +123,7 @@ export default async function AdminPage() {
       raffleConfig={raffleConfig}
       logoUrl={org?.logoUrl ?? null}
       qrUrl={raffle?.qr_url ?? null}
+      premioImagenUrl={raffle?.premio_imagen_url ?? null}
       raffleUrl={org && host ? buildTenantAdminUrl(org.subdomain, host, "/") : null}
       blessedNumbers={raffle?.numeros_bendecidos ?? []}
       pricePerNumber={raffle?.precio_por_numero ?? null}
