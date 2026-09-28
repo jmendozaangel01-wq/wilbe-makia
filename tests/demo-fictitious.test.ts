@@ -157,6 +157,8 @@ describe("tenant home render uses this tenant's real data, not lib/constants", (
             nequi_nombre: "Acme Titular",
             qr_url: null,
             sorteo_fecha: "31 DIC 2026",
+            premio_nombre: "Gánate una bicicleta Acme",
+            premio_imagen_url: null,
           },
           error: null,
         },
@@ -173,13 +175,93 @@ describe("tenant home render uses this tenant's real data, not lib/constants", (
     expect(html).toContain("$777");
     expect(html).toContain("31 DIC 2026");
     expect(html).toContain("$7.770"); // paquete_10 price, from raffles.paquetes, not PAQUETES
-    // Only the fields this batch wired are asserted here -- Hero's hardcoded
-    // prize name/image ("XTZ 660", moto-hero.jpg) and SiteNav's hardcoded
-    // "WILBER MAKIA" brand are separate, pre-existing, out-of-scope issues
-    // (no raffles column for prize name/image exists yet), so REAL_STRINGS'
-    // full list isn't the right check for a tenant (non-demo) render.
-    expect(html).not.toContain("3015649719");
-    expect(html).not.toContain("Jairo Mendoza");
+    // The prize title and the nav brand are this tenant's own too: none of the
+    // first tenant's hardcoded values may leak into a tenant that didn't
+    // configure them ("Jairo Mendoza" is only a legacy Nequi holder here, the
+    // raffle's own holder is "Acme Titular").
+    expect(html).toContain("Gánate una bicicleta Acme");
+    expect(html).toContain("Rifa Acme");
+    for (const s of ["3015649719", "Jairo Mendoza", "XTZ", "Wilber", "WILBER", "moto-hero"]) {
+      expect(html).not.toContain(s);
+    }
+    // No prize photo configured: no prize image block at all.
+    expect(html).not.toContain("<img");
+  });
+
+  it("renders the tenant's prize photo as a plain img only when premio_imagen_url is set", async () => {
+    mocks.host = "pic.benditarifa.com";
+    mocks.resolveOrganizationByHost.mockResolvedValue({
+      id: "org-pic",
+      subdomain: "pic",
+      nombre: "Rifa Foto",
+      logoUrl: null,
+      colorPrimario: null,
+      isPlatformOwner: false,
+      subscriptionStatus: "active",
+      trialEndsAt: null,
+    });
+    mocks.createAdminClient.mockReturnValue(
+      fakeAdminClient({
+        numeros: { data: [], error: null },
+        raffle: {
+          data: {
+            precio_por_numero: 500,
+            paquetes: [{ tipo: "paquete_10", qty: 10, price: 5000 }],
+            nequi_numero: "3005556666",
+            nequi_nombre: "Titular Foto",
+            qr_url: null,
+            sorteo_fecha: "1 ENE 2027",
+            premio_nombre: "Un carro de ejemplo",
+            premio_imagen_url: "https://example.supabase.co/storage/v1/object/public/logos/org-pic/premio-1.png",
+          },
+          error: null,
+        },
+      })
+    );
+
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Un carro de ejemplo");
+    expect(html).toContain('src="https://example.supabase.co/storage/v1/object/public/logos/org-pic/premio-1.png"');
+    for (const s of ["XTZ", "Wilber", "WILBER", "moto-hero"]) expect(html).not.toContain(s);
+  });
+
+  it("drops a malformed stored prize photo URL instead of rendering it", async () => {
+    mocks.host = "bad.benditarifa.com";
+    mocks.resolveOrganizationByHost.mockResolvedValue({
+      id: "org-bad",
+      subdomain: "bad",
+      nombre: "Rifa Mala",
+      logoUrl: null,
+      colorPrimario: null,
+      isPlatformOwner: false,
+      subscriptionStatus: "active",
+      trialEndsAt: null,
+    });
+    mocks.createAdminClient.mockReturnValue(
+      fakeAdminClient({
+        numeros: { data: [], error: null },
+        raffle: {
+          data: {
+            precio_por_numero: 500,
+            paquetes: [{ tipo: "paquete_10", qty: 10, price: 5000 }],
+            nequi_numero: "3005556666",
+            nequi_nombre: "Titular Malo",
+            qr_url: null,
+            sorteo_fecha: "1 ENE 2027",
+            premio_nombre: "Premio sin foto valida",
+            premio_imagen_url: "javascript:alert(1)",
+          },
+          error: null,
+        },
+      })
+    );
+
+    const html = renderToStaticMarkup(await Home());
+
+    expect(html).toContain("Premio sin foto valida");
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("javascript:");
   });
 
   it("shows an unavailable state instead of falling back to the legacy constants when the tenant has no active raffle row", async () => {

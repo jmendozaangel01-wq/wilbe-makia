@@ -111,6 +111,8 @@ interface ActiveRaffleRow {
   nequi_nombre: string;
   qr_url: string | null;
   sorteo_fecha: string;
+  premio_nombre: string;
+  premio_imagen_url: string | null;
 }
 
 /** Adds the display-only fields PackageCard needs (priceLabel, popular) that
@@ -136,12 +138,12 @@ function toDisplayPaquetes(raw: RafflePaqueteRow[]): Paquete[] {
  */
 async function loadActiveRaffleForBuyer(
   organizationId: string
-): Promise<(TenantRaffleForFlow & { sorteoFecha: string }) | null> {
+): Promise<(TenantRaffleForFlow & { sorteoFecha: string; premioNombre: string; premioImagenUrl: string | null }) | null> {
   try {
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("raffles")
-      .select("precio_por_numero, paquetes, nequi_numero, nequi_nombre, qr_url, sorteo_fecha")
+      .select("precio_por_numero, paquetes, nequi_numero, nequi_nombre, qr_url, sorteo_fecha, premio_nombre, premio_imagen_url")
       .eq("organization_id", organizationId)
       .eq("estado", "activa")
       .maybeSingle();
@@ -160,6 +162,9 @@ async function loadActiveRaffleForBuyer(
       nequiNombre: row.nequi_nombre,
       qrUrl: row.qr_url,
       sorteoFecha: row.sorteo_fecha,
+      premioNombre: row.premio_nombre,
+      // Same fail-soft as the org logo: a malformed stored URL means "no photo".
+      premioImagenUrl: row.premio_imagen_url && isValidLogoUrl(row.premio_imagen_url) ? row.premio_imagen_url : null,
     };
   } catch (err) {
     console.error("[page] active raffle fetch failed", err);
@@ -228,8 +233,15 @@ export default async function Home() {
 
   return (
     <div className="font-body bg-charcoal text-cream min-h-screen overflow-x-hidden flex flex-col flex-1">
-      <SiteNav />
-      <Hero orgName={orgName} logoUrl={logoUrl} pricePerNumber={raffle?.pricePerNumber} sorteoFecha={raffle?.sorteoFecha} />
+      <SiteNav orgName={orgName} />
+      <Hero
+        orgName={orgName}
+        logoUrl={logoUrl}
+        premioNombre={raffle?.premioNombre}
+        premioImagenUrl={raffle?.premioImagenUrl}
+        pricePerNumber={raffle?.pricePerNumber}
+        sorteoFecha={raffle?.sorteoFecha}
+      />
       <BlessedNumbers blessedNumbers={blessedNumbers} initialTaken={initialTaken} orgId={org?.id ?? null} />
       <RifaFlow raffle={raffle} />
       <SiteFooter orgName={orgName} />
