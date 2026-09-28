@@ -1,6 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { createTestOrg, createTestRaffle, cleanupOrg, type TestOrg, type TestRaffle } from "./helpers/fixtures";
+import {
+  createTestOrg,
+  createTestRaffle,
+  seedNumeros,
+  cleanupOrg,
+  type TestOrg,
+  type TestRaffle,
+} from "./helpers/fixtures";
 
 // Integration tests for actualizar_rifa() (0015_raffle_config_update.sql) --
 // the first update path for a raffle's configuration after creation
@@ -69,6 +76,52 @@ describe("actualizar_rifa", () => {
       nequi_nombre: "Nuevo Titular",
     });
     expect(row!.numeros_bendecidos).toEqual([1, 2, 3]);
+  });
+
+  async function blessedFlagged(raffleId: string): Promise<number[]> {
+    const { data, error } = await admin
+      .from("numeros")
+      .select("numero")
+      .eq("raffle_id", raffleId)
+      .eq("es_bendecido", true)
+      .order("numero");
+    if (error) throw error;
+    return (data ?? []).map((r) => r.numero as number);
+  }
+
+  it("resyncs numeros.es_bendecido to the new blessed list (adds new, clears removed)", async () => {
+    const { org, raffle } = await setup("config-blessed-resync");
+    await seedNumeros(admin, raffle);
+
+    const first = await admin.rpc("actualizar_rifa", validArgs(org, raffle, { p_numeros_bendecidos: [1, 2, 3] }));
+    expect(first.error).toBeNull();
+    expect(await blessedFlagged(raffle.id)).toEqual([1, 2, 3]);
+
+    const second = await admin.rpc("actualizar_rifa", validArgs(org, raffle, { p_numeros_bendecidos: [3, 7] }));
+    expect(second.error).toBeNull();
+    expect(await blessedFlagged(raffle.id)).toEqual([3, 7]);
+
+    const cleared = await admin.rpc("actualizar_rifa", validArgs(org, raffle, { p_numeros_bendecidos: [] }));
+    expect(cleared.error).toBeNull();
+    expect(await blessedFlagged(raffle.id)).toEqual([]);
+  });
+
+  it("leaves another raffle's numeros flags untouched when resyncing", async () => {
+    const { org, raffle } = await setup("config-blessed-resync-own");
+    const other = await setup("config-blessed-resync-other");
+    await seedNumeros(admin, raffle);
+    await seedNumeros(admin, other.raffle);
+    await admin
+      .from("numeros")
+      .update({ es_bendecido: true })
+      .eq("raffle_id", other.raffle.id)
+      .in("numero", [10, 11]);
+
+    const { error } = await admin.rpc("actualizar_rifa", validArgs(org, raffle, { p_numeros_bendecidos: [1, 2] }));
+    expect(error).toBeNull();
+
+    expect(await blessedFlagged(raffle.id)).toEqual([1, 2]);
+    expect(await blessedFlagged(other.raffle.id)).toEqual([10, 11]);
   });
 
   it("never changes max_numero -- it isn't even a parameter", async () => {
