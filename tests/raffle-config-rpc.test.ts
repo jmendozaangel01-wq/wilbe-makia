@@ -234,6 +234,124 @@ describe("actualizar_rifa", () => {
     expect(error).not.toBeNull();
     expect(error?.message).toContain("no encontrada");
   });
+
+  it("leaves premio_nombre and premio_imagen_url untouched when both params are omitted", async () => {
+    const { org, raffle } = await setup("config-premio-untouched");
+    await admin.from("raffles").update({ premio_imagen_url: "https://example.com/existing-premio.png" }).eq("id", raffle.id);
+
+    const { error } = await admin.rpc("actualizar_rifa", validArgs(org, raffle));
+    expect(error).toBeNull();
+
+    const { data: row } = await admin.from("raffles").select("premio_nombre, premio_imagen_url").eq("id", raffle.id).single();
+    expect(row).toEqual({
+      premio_nombre: "Test Prize config-premio-untouched",
+      premio_imagen_url: "https://example.com/existing-premio.png",
+    });
+  });
+
+  it("updates premio_nombre (trimmed) and premio_imagen_url when provided", async () => {
+    const { org, raffle } = await setup("config-premio-update");
+
+    const { error } = await admin.rpc(
+      "actualizar_rifa",
+      validArgs(org, raffle, {
+        p_premio_nombre: "  Gánate una moto XTZ 660 0-KM  ",
+        p_premio_imagen_url: "https://example.supabase.co/storage/v1/object/public/logos/premio.png",
+      })
+    );
+    expect(error).toBeNull();
+
+    const { data: row } = await admin.from("raffles").select("premio_nombre, premio_imagen_url").eq("id", raffle.id).single();
+    expect(row).toEqual({
+      premio_nombre: "Gánate una moto XTZ 660 0-KM",
+      premio_imagen_url: "https://example.supabase.co/storage/v1/object/public/logos/premio.png",
+    });
+  });
+
+  it.each([
+    ["blank prize title", { p_premio_nombre: "   " }],
+    ["prize title over 120 chars", { p_premio_nombre: "x".repeat(121) }],
+    ["non-http(s) prize image", { p_premio_imagen_url: "javascript:alert(1)" }],
+    ["prize image over 2048 chars", { p_premio_imagen_url: `https://example.com/${"a".repeat(2040)}` }],
+  ])("rejects %s", async (_label, overrides) => {
+    const { org, raffle } = await setup("config-premio-bad");
+
+    const { error } = await admin.rpc("actualizar_rifa", validArgs(org, raffle, overrides));
+    expect(error).not.toBeNull();
+
+    const { data: row } = await admin.from("raffles").select("premio_nombre, premio_imagen_url").eq("id", raffle.id).single();
+    expect(row).toEqual({ premio_nombre: "Test Prize config-premio-bad", premio_imagen_url: null });
+  });
+
+  it("rejects a call scoped to the wrong organization even when only the prize params are set", async () => {
+    const { raffle } = await setup("config-premio-wrong-org");
+    const otherOrg = await createTestOrg(admin, "config-premio-wrong-org-other");
+    createdOrgIds.push(otherOrg.id);
+
+    const { error } = await admin.rpc(
+      "actualizar_rifa",
+      validArgs(otherOrg, raffle, { p_premio_nombre: "Hijack", p_premio_imagen_url: "https://example.com/x.png" })
+    );
+    expect(error).not.toBeNull();
+    expect(error?.message).toContain("no encontrada");
+  });
+});
+
+describe("crear_rifa prize columns", () => {
+  const SUPABASE_URL = process.env.TEST_SUPABASE_URL!;
+  const SERVICE_ROLE_KEY = process.env.TEST_SUPABASE_SERVICE_ROLE_KEY!;
+  let admin: SupabaseClient;
+  const createdOrgIds: string[] = [];
+
+  beforeAll(() => {
+    admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  });
+
+  afterAll(async () => {
+    for (const orgId of createdOrgIds) await cleanupOrg(admin, orgId);
+  });
+
+  function crearRifaArgs(org: TestOrg, overrides: Record<string, unknown> = {}) {
+    return {
+      p_organization_id: org.id,
+      p_nombre: "Rifa base",
+      p_max_numero: 9,
+      p_precio_por_numero: 200,
+      p_paquetes: [],
+      p_numeros_bendecidos: [],
+      p_sorteo_fecha: "15 OCT 2026",
+      p_nequi_numero: "3000000000",
+      p_nequi_nombre: "Test",
+      ...overrides,
+    };
+  }
+
+  it("stores the given prize title and image", async () => {
+    const org = await createTestOrg(admin, "crear-rifa-premio");
+    createdOrgIds.push(org.id);
+
+    const { data, error } = await admin.rpc(
+      "crear_rifa",
+      crearRifaArgs(org, { p_premio_nombre: "Gánate una moto", p_premio_imagen_url: "https://example.com/p.png" })
+    );
+    expect(error).toBeNull();
+
+    const { data: row } = await admin.from("raffles").select("premio_nombre, premio_imagen_url").eq("id", data).single();
+    expect(row).toEqual({ premio_nombre: "Gánate una moto", premio_imagen_url: "https://example.com/p.png" });
+  });
+
+  it("falls back to the raffle name when no prize title is passed (old callers, no overload ambiguity)", async () => {
+    const org = await createTestOrg(admin, "crear-rifa-fallback");
+    createdOrgIds.push(org.id);
+
+    const { data, error } = await admin.rpc("crear_rifa", crearRifaArgs(org));
+    expect(error).toBeNull();
+
+    const { data: row } = await admin.from("raffles").select("premio_nombre, premio_imagen_url").eq("id", data).single();
+    expect(row).toEqual({ premio_nombre: "Rifa base", premio_imagen_url: null });
+  });
 });
 
 describe("logos storage bucket", () => {
