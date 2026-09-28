@@ -20,12 +20,16 @@ const MAX_MAX_NUMERO = 99_999;
 // own "keep in sync" convention.
 export const MAX_PRICE = 10_000_000;
 export const MAX_BLESSED = 50;
+// raffles.premio_nombre check (0018): the whole public title, 1..120 chars.
+export const MAX_PREMIO_NOMBRE = 120;
+export const PREMIO_NOMBRE_ERROR = `Ingresa el título de la rifa (máximo ${MAX_PREMIO_NOMBRE} caracteres).`;
 export const DEFAULT_PACKAGE_QUANTITIES = [10, 50, 100];
 
 export interface OnboardingInput {
   orgName: string;
   subdomain: string;
   raffleName: string;
+  premioNombre: string;
   maxNumero: string;
   precioPorNumero: string;
   sorteoFecha: string;
@@ -44,6 +48,7 @@ export interface OnboardingValue {
   orgName: string;
   subdomain: string;
   raffleName: string;
+  premioNombre: string;
   maxNumero: number;
   precioPorNumero: number;
   paquetes: OnboardingPaquete[];
@@ -86,6 +91,9 @@ export function validateOnboardingInput(input: OnboardingInput): OnboardingResul
 
   const raffleName = requiredText(input.raffleName, 80, "Ingresa el nombre de la rifa (máximo 80 caracteres).");
   if (raffleName.error) errors.raffleName = raffleName.error;
+
+  const premioNombre = requiredText(input.premioNombre, MAX_PREMIO_NOMBRE, PREMIO_NOMBRE_ERROR);
+  if (premioNombre.error) errors.premioNombre = premioNombre.error;
 
   const maxNumero = parseInteger(input.maxNumero);
   if (maxNumero === null || maxNumero < MIN_MAX_NUMERO || maxNumero > MAX_MAX_NUMERO) {
@@ -142,6 +150,7 @@ export function validateOnboardingInput(input: OnboardingInput): OnboardingResul
       orgName: orgName.value!,
       subdomain,
       raffleName: raffleName.value!,
+      premioNombre: premioNombre.value!,
       maxNumero: maxNumero!,
       precioPorNumero: precio!,
       paquetes,

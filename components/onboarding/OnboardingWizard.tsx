@@ -12,6 +12,7 @@ const EMPTY_VALUES: OnboardingInput = {
   orgName: "",
   subdomain: "",
   raffleName: "",
+  premioNombre: "",
   maxNumero: "999",
   precioPorNumero: "",
   sorteoFecha: "",
@@ -162,6 +163,14 @@ export default function OnboardingWizard({ apexDomain }: { apexDomain: string })
         style={{ border: "none", padding: 0, margin: 0, display: step === 2 ? "flex" : "none", flexDirection: "column", gap: "16px" }}
       >
         <Field name="raffleName" label="Nombre de la rifa" values={values} error={errors.raffleName} maxLength={80} />
+        <Field
+          name="premioNombre"
+          label="Título de la rifa"
+          hint="Ejemplo: Gánate una moto XTZ 660 0-KM"
+          values={values}
+          error={errors.premioNombre}
+          maxLength={120}
+        />
         <Field
           name="maxNumero"
           label="Número máximo"
