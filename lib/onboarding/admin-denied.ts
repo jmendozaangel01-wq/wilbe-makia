@@ -10,8 +10,9 @@ import { resolvePostAuthDestination } from "./destination";
  * /admin, so sending everyone to the login page loops forever for a user who
  * is signed in but has no access to this tenant:
  * - no session -> /admin/login;
- * - signed in with no organization -> /onboarding (spec: first-time user is
- *   routed to creation);
+ * - signed in with no organization -> /onboarding on the platform (apex) host
+ *   (spec: first-time user is routed to creation), or the terminal no-access
+ *   page on a tenant host, where they are not there to create a raffle;
  * - member of another tenant -> that tenant's admin;
  * - member of this very tenant, denied for another reason (e.g. lapsed
  *   subscription), or on an unrecognised host -> a terminal

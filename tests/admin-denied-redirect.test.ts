@@ -91,6 +91,14 @@ describe("getAdminDeniedRedirect", () => {
     expect(await getAdminDeniedRedirect()).toBe("/admin/login?error=no_access");
   });
 
+  it("sends an authenticated user with no organization on a tenant host to the terminal no-access page, not onboarding", async () => {
+    const user = await createAuthedUser("denied-none-tenant");
+    userIds.push(user.userId);
+    mockState.client = user.client;
+    mockState.host = "someone.benditarifa.com";
+    expect(await getAdminDeniedRedirect()).toBe("/admin/login?error=no_access");
+  });
+
   it("fails to a terminal page instead of throwing when the membership lookup fails", async () => {
     const user = await createAuthedUser("denied-lookup");
     userIds.push(user.userId);

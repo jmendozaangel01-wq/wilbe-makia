@@ -32,7 +32,8 @@ export async function fetchMemberOrganizations(supabase: Pick<SupabaseClient, "f
 
 /**
  * Where a freshly authenticated user should land (spec, tenant-onboarding):
- * - zero memberships -> the onboarding wizard (same host);
+ * - zero memberships on the platform (apex) host -> the onboarding wizard; on
+ *   a tenant or reserved host -> the terminal /admin/login?error=no_access;
  * - a member whose current host already is one of their tenants -> `next`
  *   (default /admin) on this host;
  * - otherwise -> the admin area of their own tenant. Session cookies are
@@ -49,7 +50,11 @@ export async function resolvePostAuthDestination(
   const orgs = await fetchMemberOrganizations(supabase);
 
   if (orgs.length === 0) {
-    return "/onboarding";
+    // Onboarding creates a raffle, so it is only offered on the platform's own
+    // host. An account with no membership that reaches a tenant's (or a
+    // reserved) host is not there to create a raffle -- it gets the terminal
+    // no-access page instead of the wizard.
+    return parseSubdomain(host).kind === "apex" ? "/onboarding" : loginErrorPath("no_access");
   }
 
   const parsed = parseSubdomain(host);
