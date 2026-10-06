@@ -267,12 +267,15 @@ max_frequency = "5s"
 # [auth.sms.test_otp]
 # 4152127777 = "123456"
 
-# Configure logged in session timeouts.
-# [auth.sessions]
-# Force log out after the specified duration.
-# timebox = "24h"
-# Force log out if the user has been inactive longer than the specified duration.
-# inactivity_timeout = "8h"
+# Configure logged in session timeouts. The default refresh-token cookie
+# @supabase/ssr sets is otherwise valid for 400 days regardless of activity --
+# this is the actual knob that forces re-login after time passes (closing the
+# browser/shutting down the PC alone does NOT clear a persistent cookie, since
+# most browsers restore it on restart).
+[auth.sessions]
+# Force log out after the specified duration, no matter how active the admin
+# is. 24h means every admin must sign in again at most once a day.
+timebox = "24h"
 
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
 # [auth.hook.before_user_created]
