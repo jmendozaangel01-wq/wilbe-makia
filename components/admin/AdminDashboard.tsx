@@ -82,6 +82,19 @@ export default function AdminDashboard({
   const [reservas, setReservas] = useState<Reserva[]>(initialReservas);
   const [selectedReservaId, setSelectedReservaId] = useState<string | null>(null);
   const [changeTick, setChangeTick] = useState(0);
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleLogout() {
+    if (signingOut) return;
+    setSigningOut(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error("[admin] sign-out failed", error.message);
+    // Full navigation regardless of the signOut() outcome above -- the
+    // middleware re-checks the session on load and sends us to
+    // /admin/login the moment the cookie is gone.
+    window.location.assign("/admin/login");
+  }
 
   const refetchReservas = useCallback(async () => {
     const supabase = createClient();
@@ -171,6 +184,23 @@ export default function AdminDashboard({
             PANEL ADMIN
           </span>
         </div>
+        <button
+          onClick={handleLogout}
+          disabled={signingOut}
+          style={{
+            background: "none",
+            border: "1px solid oklch(0.40 0.02 40)",
+            borderRadius: "6px",
+            padding: "8px 14px",
+            fontSize: "13px",
+            fontWeight: 700,
+            color: "oklch(0.85 0.01 40)",
+            cursor: signingOut ? "default" : "pointer",
+            opacity: signingOut ? 0.6 : 1,
+          }}
+        >
+          {signingOut ? "Cerrando sesión..." : "Cerrar sesión"}
+        </button>
       </div>
 
       <div
